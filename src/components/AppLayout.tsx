@@ -78,6 +78,11 @@ const AppLayout = () => {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[84vw] max-w-xs p-5">
+                  <div className="mb-6 rounded-md border border-border/70 bg-background/70 p-3">
+                    <p className="text-xs text-muted-foreground">Profile</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">Good morning, {firstName}! 👋</p>
+                  </div>
+
                   <Link to="/" className="mb-8 flex items-center gap-3">
                     <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-primary/15 text-primary">E</span>
                     <div>
