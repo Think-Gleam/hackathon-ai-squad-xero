@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { COURSE_CATALOG } from "@/lib/course-catalog";
+import { fetchAvailableCourseBySlug, type EduCourse } from "@/lib/course-catalog";
+import { logLearningActivity } from "@/lib/gamification";
 import {
   createPlannerEntry,
   ensureEnrollmentAndModules,
@@ -44,7 +45,7 @@ const CourseDetailPage = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
 
-  const course = useMemo(() => COURSE_CATALOG.find((item) => item.slug === courseSlug), [courseSlug]);
+  const [course, setCourse] = useState<EduCourse | null>(null);
   const [loading, setLoading] = useState(false);
   const [enrollment, setEnrollment] = useState<any | null>(null);
   const [modules, setModules] = useState<LearningModule[]>([]);
