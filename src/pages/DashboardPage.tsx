@@ -33,10 +33,9 @@ const DashboardPage = () => {
     const load = async () => {
       if (!profile?.id) return;
 
-      const [{ data: enrollmentRows }, { data: planRows }, { data: moduleRows }] = await Promise.all([
+      const [{ data: enrollmentRows }, { data: planRows }] = await Promise.all([
         supabase.from("course_enrollments").select("id,course_slug,course_title,mastery_score,current_module_index,status").eq("profile_id", profile.id),
         supabase.from("daily_learning_plans").select("id,status").eq("profile_id", profile.id),
-        supabase.from("learning_modules").select("id,unlock_state,enrollment_id").in("enrollment_id", []),
       ]);
 
       const cleanEnrollments = enrollmentRows ?? [];
@@ -48,7 +47,6 @@ const DashboardPage = () => {
         xp: Math.round(cleanEnrollments.reduce((sum, item) => sum + Number(item.mastery_score ?? 0), 0) * 10),
         badges: cleanEnrollments.filter((item) => item.status === "completed").length,
       });
-      void moduleRows;
     };
 
     void load();
