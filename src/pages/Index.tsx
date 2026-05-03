@@ -15,6 +15,8 @@ import {
   User,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type ViewMode = "dashboard" | "chat";
 
@@ -244,8 +246,16 @@ const Index = () => {
                 {chatMessages.map((msg, idx) => (
                   <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[82%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-2`}>
-                      <div className={msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai hover-scale"}>{msg.text}</div>
-                      {msg.role === "ai" ? (
+                      <div className={msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai hover-scale"}>
+                        {msg.role === "ai" ? (
+                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          msg.text
+                        )}
+                      </div>
+                      {msg.role === "ai" && lessonContextExists ? (
                         <button
                           onClick={() => handleToggleAudio(idx)}
                           className="inline-flex items-center gap-2 rounded-md border border-primary/35 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-all duration-200 hover:bg-primary/20"
@@ -271,7 +281,7 @@ const Index = () => {
                   <div className="flex justify-start">
                     <div className="max-w-[82%]">
                       <div className="chat-bubble-ai flex items-center gap-2">
-                        <span className="text-sm text-card-foreground">AI is thinking</span>
+                        <span className="text-sm text-card-foreground">Curriculum Agent is thinking...</span>
                         <span className="typing-dots" aria-label="AI typing indicator">
                           <span />
                           <span />
@@ -380,3 +390,4 @@ const Index = () => {
 };
 
 export default Index;
+  const lessonContextExists = chatMessages.some((message) => message.role === "ai" && message.text.trim().length > 0);

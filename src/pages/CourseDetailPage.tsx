@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Loader2, Play, Volume2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
@@ -117,29 +119,35 @@ const CourseDetailPage = () => {
     const script = activeModule.voice_script || activeModule.lesson_summary || `Let's study ${activeModule.module_title}.`;
 
     setListening(true);
-    const { data, error } = await db.functions.invoke("elevenlabs-tts", {
-      body: { text: script, voiceId },
-    });
+    try {
+      const { data, error } = await db.functions.invoke("elevenlabs-tts", {
+        body: { text: script, voiceId },
+      });
 
-    if (error || !data || !(data instanceof Blob)) {
+      if (error || !data || !(data instanceof Blob)) {
+        setListening(false);
+        toast({ title: "Audio Agent failed", description: "Please try again.", variant: "destructive" });
+        await logVoiceUsage({ profileId: profile.id, courseSlug, moduleId: activeModule.id, provider: "elevenlabs", mode: "tts", status: "failed" });
+        return;
+      }
+
+      const audio = new Audio(URL.createObjectURL(data));
+      audioRef.current = audio;
+      audio.onended = () => setListening(false);
+      await audio.play();
+      await logVoiceUsage({
+        profileId: profile.id,
+        courseSlug,
+        moduleId: activeModule.id,
+        provider: "elevenlabs",
+        mode: "tts",
+        inputText: script,
+      });
+    } catch {
       setListening(false);
-      toast({ title: "Voice narration failed", description: "Please try again.", variant: "destructive" });
+      toast({ title: "Audio Agent blocked", description: "Playback was blocked or unavailable.", variant: "destructive" });
       await logVoiceUsage({ profileId: profile.id, courseSlug, moduleId: activeModule.id, provider: "elevenlabs", mode: "tts", status: "failed" });
-      return;
     }
-
-    const audio = new Audio(URL.createObjectURL(data));
-    audioRef.current = audio;
-    audio.onended = () => setListening(false);
-    await audio.play();
-    await logVoiceUsage({
-      profileId: profile.id,
-      courseSlug,
-      moduleId: activeModule.id,
-      provider: "elevenlabs",
-      mode: "tts",
-      inputText: script,
-    });
   };
 
   const submitQuiz = async (result: { scorePercent: number; questionCount: number; correctCount: number }) => {
@@ -304,10 +312,12 @@ const CourseDetailPage = () => {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-xl font-semibold">Teacher Agent: {activeModule.module_title}</h2>
             <Button variant="outline" size="sm" onClick={playLessonNarration} disabled={listening}>
-              {listening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />} Listen to the Tutor
+              {listening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />} {listening ? "Audio Agent is synthesizing..." : "Listen to the Tutor"}
             </Button>
           </div>
-          <p className="text-sm leading-7 text-muted-foreground whitespace-pre-line">{activeModule.lesson_content ?? activeModule.lesson_summary}</p>
+          <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{activeModule.lesson_content ?? activeModule.lesson_summary ?? ""}</ReactMarkdown>
+          </div>
           <p className="text-sm text-foreground"><span className="font-semibold">Mastery rule:</span> Score 75%+ to unlock the next module.</p>
         </section>
       ) : null}
