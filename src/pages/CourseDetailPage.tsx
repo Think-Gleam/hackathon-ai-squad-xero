@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Loader2, Play, Sparkles, Volume2 } from "lucide-react";
+import { Loader2, Play, Volume2 } from "lucide-react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import QuizEngine from "@/components/quiz/QuizEngine";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAvailableCourseBySlug, type EduCourse } from "@/lib/course-catalog";
 import { logLearningActivity } from "@/lib/gamification";
@@ -50,9 +51,8 @@ const CourseDetailPage = () => {
   const [enrollment, setEnrollment] = useState<any | null>(null);
   const [modules, setModules] = useState<LearningModule[]>([]);
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
-  const [evaluating, setEvaluating] = useState(false);
+  const [moduleStartPending, setModuleStartPending] = useState(false);
   const [listening, setListening] = useState(false);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -66,10 +66,7 @@ const CourseDetailPage = () => {
   }, [courseSlug]);
 
   const activeModule = modules.find((item) => item.id === activeModuleId) ?? modules.find((item) => item.unlock_state === "unlocked") ?? null;
-  const quizDraft = useMemo(() => {
-    if (!activeModule || !profile) return [];
-    return generateQuizForModule(activeModule.module_title, profile);
-  }, [activeModule, profile]);
+  const quizTopic = useMemo(() => activeModule?.module_title ?? "", [activeModule?.module_title]);
 
   const loadLearningState = async () => {
     if (!profile?.id || !courseSlug) return;
