@@ -307,7 +307,12 @@ class SpeechFallbackService:
         if not self.azure_speech_key or not self.azure_speech_region:
             raise ProviderError("Missing AZURE_SPEECH_KEY / AZURE_SPEECH_REGION")
 
-        endpoint = f"https://{self.azure_speech_region}.tts.speech.microsoft.com/cognitiveservices/v1"
+        custom_endpoint = os.getenv("AZURE_SPEECH_ENDPOINT", "").rstrip("/")
+        endpoint = (
+            f"{custom_endpoint}/tts/cognitiveservices/v1"
+            if custom_endpoint
+            else f"https://{self.azure_speech_region}.tts.speech.microsoft.com/cognitiveservices/v1"
+        )
         ssml = f"""
         <speak version='1.0' xml:lang='{language}'>
           <voice xml:lang='{language}' xml:gender='Female' name='en-US-JennyNeural'>
@@ -402,9 +407,11 @@ class STTFallbackService:
     def _stt_azure(self, audio_bytes: bytes, _mime_type: str, language: str) -> STTResponse:
         if not self.azure_speech_key or not self.azure_speech_region:
             raise ProviderError("Missing AZURE_SPEECH_KEY / AZURE_SPEECH_REGION")
+        custom_endpoint = os.getenv("AZURE_SPEECH_ENDPOINT", "").rstrip("/")
         endpoint = (
-            f"https://{self.azure_speech_region}.stt.speech.microsoft.com/"
-            f"speech/recognition/conversation/cognitiveservices/v1?language={language}"
+            f"{custom_endpoint}/speech/recognition/conversation/cognitiveservices/v1?language={language}"
+            if custom_endpoint
+            else f"https://{self.azure_speech_region}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language={language}"
         )
         headers = {
             "Ocp-Apim-Subscription-Key": self.azure_speech_key,
