@@ -14,7 +14,6 @@ import {
   createPlannerEntry,
   ensureEnrollmentAndModules,
   fetchCourseLearningState,
-  generateQuizForModule,
   logAgentStep,
   logVoiceUsage,
   submitAdaptiveQuiz,
@@ -143,26 +142,18 @@ const CourseDetailPage = () => {
     });
   };
 
-  const submitQuiz = async () => {
-    if (!profile || !activeModule || quizDraft.length === 0) return;
-    const answered = quizDraft.filter((item) => selectedAnswers[item.id] !== undefined);
-    if (answered.length !== quizDraft.length) {
-      toast({ title: "Complete all quiz answers", description: "Please answer every question before submitting." });
-      return;
-    }
+  const submitQuiz = async (result: { scorePercent: number; questionCount: number; correctCount: number }) => {
+    if (!profile || !activeModule) return;
 
-    const correctCount = quizDraft.reduce((sum, item) => sum + (selectedAnswers[item.id] === item.correctIndex ? 1 : 0), 0);
-    const score = Math.round((correctCount / quizDraft.length) * 100);
-
-    setEvaluating(true);
+    const score = result.scorePercent;
     try {
-      const evaluator = await submitAdaptiveQuiz(profile.id, activeModule.id, score, quizDraft.length);
+      const evaluator = await submitAdaptiveQuiz(profile.id, activeModule.id, score, result.questionCount);
       await logAgentStep({
         profileId: profile.id,
         courseSlug,
         moduleId: activeModule.id,
         agent: "quiz",
-        inputPayload: { questionCount: quizDraft.length },
+        inputPayload: { questionCount: result.questionCount },
         outputPayload: { score },
       });
       await logAgentStep({
@@ -174,11 +165,10 @@ const CourseDetailPage = () => {
         outputPayload: { nextAction: evaluator?.next_action },
       });
 
-      setSelectedAnswers({});
       await logLearningActivity({
         profileId: profile.id,
         activityType: "quiz_completed",
-        metadata: { moduleId: activeModule.id, score },
+        metadata: { moduleId: activeModule.id, score, correctAnswers: result.correctCount },
       });
 
       if (score >= 75) {
@@ -204,8 +194,31 @@ const CourseDetailPage = () => {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Evaluation failed.";
       toast({ title: "Could not submit quiz", description: message, variant: "destructive" });
+      throw error;
+    }
+  };
+
+  const startAdaptiveModule = async () => {
+    if (!profile?.id || !enrollment?.id || !activeModule) return;
+    setModuleStartPending(true);
+    try {
+      await db.from("course_enrollments").update({ status: "active" }).eq("id", enrollment.id).eq("profile_id", profile.id);
+      await logLearningActivity({
+        profileId: profile.id,
+        activityType: "lesson_interaction",
+        referenceModuleId: activeModule.id,
+        metadata: { action: "start_adaptive_module", moduleTitle: activeModule.module_title },
+      });
+      toast({ title: "Adaptive module started", description: `${activeModule.module_title} is now active.` });
+      await loadLearningState();
+    } catch (error) {
+      toast({
+        title: "Could not start module",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
-      setEvaluating(false);
+      setModuleStartPending(false);
     }
   };
 
