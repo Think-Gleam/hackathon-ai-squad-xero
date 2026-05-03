@@ -26,6 +26,8 @@ export type Database = {
           id: string
           learner_stage: Database["public"]["Enums"]["user_stage"]
           learning_goals: string[]
+          onboarding_completed: boolean
+          onboarding_interests: string[]
           preferred_language: Database["public"]["Enums"]["preferred_language"]
           updated_at: string
         }
@@ -40,6 +42,8 @@ export type Database = {
           id: string
           learner_stage?: Database["public"]["Enums"]["user_stage"]
           learning_goals?: string[]
+          onboarding_completed?: boolean
+          onboarding_interests?: string[]
           preferred_language?: Database["public"]["Enums"]["preferred_language"]
           updated_at?: string
         }
@@ -54,6 +58,8 @@ export type Database = {
           id?: string
           learner_stage?: Database["public"]["Enums"]["user_stage"]
           learning_goals?: string[]
+          onboarding_completed?: boolean
+          onboarding_interests?: string[]
           preferred_language?: Database["public"]["Enums"]["preferred_language"]
           updated_at?: string
         }
