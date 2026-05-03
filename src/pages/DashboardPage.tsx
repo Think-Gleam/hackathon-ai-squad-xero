@@ -40,7 +40,7 @@ const DashboardPage = () => {
         .select("id,course_slug,course_title,mastery_score,current_module_index,status")
         .eq("profile_id", profileId)
         .eq("status", "active"),
-      supabase
+      (supabase as any)
         .from("accomplishments")
         .select("id,title,description,accomplishment_type,issued_at")
         .eq("profile_id", profileId)
@@ -56,6 +56,9 @@ const DashboardPage = () => {
   };
 
   useEffect(() => {
+    let isMounted = true;
+    let profileChannel: ReturnType<typeof supabase.channel> | null = null;
+
     const load = async () => {
       if (!profile?.id) return;
 
@@ -65,8 +68,9 @@ const DashboardPage = () => {
         metadata: { source: "dashboard_open" },
       });
       await loadDashboardData(profile.id);
+      if (!isMounted) return;
 
-      const profileChannel = supabase
+      profileChannel = supabase
         .channel(`dashboard-live-${profile.id}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "course_enrollments", filter: `profile_id=eq.${profile.id}` }, () => {
           void loadDashboardData(profile.id);
@@ -80,14 +84,20 @@ const DashboardPage = () => {
         .on("postgres_changes", { event: "*", schema: "public", table: "accomplishments", filter: `profile_id=eq.${profile.id}` }, () => {
           void loadDashboardData(profile.id);
         })
+        .on("postgres_changes", { event: "*", schema: "public", table: "course_catalog" }, () => {
+          void loadDashboardData(profile.id);
+        })
         .subscribe();
-
-      return () => {
-        void supabase.removeChannel(profileChannel);
-      };
     };
 
     void load();
+
+    return () => {
+      isMounted = false;
+      if (profileChannel) {
+        void supabase.removeChannel(profileChannel);
+      }
+    };
   }, [profile?.id]);
 
   const learnerName = useMemo(() => profile?.full_name?.split(" ")[0] ?? "Learner", [profile?.full_name]);
