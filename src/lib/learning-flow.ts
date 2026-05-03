@@ -56,7 +56,7 @@ export const ensureEnrollmentAndModules = async (profile: Profile, courseSlug: s
     module_goal: module.moduleGoal,
     estimated_minutes: module.estimatedMinutes,
     difficulty_level: module.difficultyLevel,
-    unlock_state: idx === 0 ? "unlocked" : "locked",
+    unlock_state: (idx === 0 ? "unlocked" : "locked") as "unlocked" | "locked",
     lesson_content: module.lessonContent,
     lesson_summary: module.lessonSummary,
     pakistan_context_examples: module.pakistanContextExamples,
@@ -65,7 +65,7 @@ export const ensureEnrollmentAndModules = async (profile: Profile, courseSlug: s
 
   const { error: moduleUpsertError } = await supabase
     .from("learning_modules")
-    .upsert(modulePayload, { onConflict: "enrollment_id,module_index", ignoreDuplicates: false });
+    .upsert(modulePayload as never, { onConflict: "enrollment_id,module_index", ignoreDuplicates: false });
 
   if (moduleUpsertError) {
     throw new Error(moduleUpsertError.message);
@@ -157,7 +157,7 @@ export const logVoiceUsage = async (params: {
   transcriptText?: string;
   status?: string;
 }) => {
-  const { error } = await supabase.from("voice_sessions").insert({
+  const { error } = await supabase.from("voice_sessions").insert([{
     profile_id: params.profileId,
     course_slug: params.courseSlug ?? null,
     module_id: params.moduleId ?? null,
@@ -166,7 +166,7 @@ export const logVoiceUsage = async (params: {
     input_text: params.inputText ?? null,
     transcript_text: params.transcriptText ?? null,
     status: params.status ?? "success",
-  });
+  }] as never);
 
   if (error) {
     throw new Error(error.message);
@@ -181,14 +181,14 @@ export const logAgentStep = async (params: {
   inputPayload?: Record<string, unknown>;
   outputPayload?: Record<string, unknown>;
 }) => {
-  const { error } = await supabase.from("agent_execution_logs").insert({
+  const { error } = await supabase.from("agent_execution_logs").insert([{
     profile_id: params.profileId,
     course_slug: params.courseSlug ?? null,
     module_id: params.moduleId ?? null,
     agent: params.agent,
     input_payload: params.inputPayload ?? {},
     output_payload: params.outputPayload ?? {},
-  });
+  }] as never);
 
   if (error) {
     throw new Error(error.message);
