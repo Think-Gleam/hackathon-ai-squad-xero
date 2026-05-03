@@ -1,13 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { COURSE_BY_SLUG } from "@/lib/course-catalog";
+import { fetchAvailableCourseBySlug } from "@/lib/course-catalog";
 import { buildAdaptiveModules, buildQuizDraft, getAdaptiveModes } from "@/lib/adaptive-learning";
 
 type Profile = Tables<"profiles">;
 const db = supabase as any;
 
 export const ensureEnrollmentAndModules = async (profile: Profile, courseSlug: string) => {
-  const course = COURSE_BY_SLUG[courseSlug];
+  const course = await fetchAvailableCourseBySlug(courseSlug);
   if (!course) {
     throw new Error("Selected course is unavailable.");
   }
