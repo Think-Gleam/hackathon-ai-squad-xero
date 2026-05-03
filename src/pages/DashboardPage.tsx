@@ -1,6 +1,10 @@
-import { Flame, Medal, PlayCircle, Star } from "lucide-react";
+import { Flame, Medal, PlayCircle, Sparkles, Star } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 const enrolledCourses = [
   {
@@ -21,11 +25,42 @@ const enrolledCourses = [
 ];
 
 const DashboardPage = () => {
+  const { profile } = useAuth();
+  const [stats, setStats] = useState({ streak: 0, xp: 0, badges: 0 });
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!profile?.id) return;
+
+      const [{ data: enrollmentRows }, { data: planRows }, { data: moduleRows }] = await Promise.all([
+        supabase.from("course_enrollments").select("id,course_slug,course_title,mastery_score,current_module_index,status").eq("profile_id", profile.id),
+        supabase.from("daily_learning_plans").select("id,status").eq("profile_id", profile.id),
+        supabase.from("learning_modules").select("id,unlock_state,enrollment_id").in("enrollment_id", []),
+      ]);
+
+      const cleanEnrollments = enrollmentRows ?? [];
+      setEnrollments(cleanEnrollments);
+
+      const activePlans = (planRows ?? []).filter((item) => item.status === "completed").length;
+      setStats({
+        streak: Math.max(1, activePlans),
+        xp: Math.round(cleanEnrollments.reduce((sum, item) => sum + Number(item.mastery_score ?? 0), 0) * 10),
+        badges: cleanEnrollments.filter((item) => item.status === "completed").length,
+      });
+      void moduleRows;
+    };
+
+    void load();
+  }, [profile?.id]);
+
+  const learnerName = useMemo(() => profile?.full_name?.split(" ")[0] ?? "Learner", [profile?.full_name]);
+
   return (
     <section className="mx-auto w-full max-w-6xl space-y-8 animate-fade-in">
       <header className="space-y-2">
-        <h1 className="text-3xl font-display md:text-4xl">Good morning, Emma! 👋 What would you like to learn today?</h1>
-        <p className="text-sm text-muted-foreground">Stay consistent, keep momentum, and continue your professional learning journey.</p>
+        <h1 className="text-3xl font-display md:text-4xl">Good morning, {learnerName}! 👋 What would you like to understand deeply today?</h1>
+        <p className="text-sm text-muted-foreground">Personalized understanding through adaptive intelligence — mastery first, speed second.</p>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -34,7 +69,7 @@ const DashboardPage = () => {
             <Flame className="h-4 w-4 text-accent" />
             <span className="text-sm">Current Streak</span>
           </div>
-          <p className="text-2xl font-semibold">14 days</p>
+          <p className="text-2xl font-semibold">{stats.streak} days</p>
         </article>
 
         <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -42,7 +77,7 @@ const DashboardPage = () => {
             <Star className="h-4 w-4 text-primary" />
             <span className="text-sm">XP Points</span>
           </div>
-          <p className="text-2xl font-semibold">2,980 XP</p>
+          <p className="text-2xl font-semibold">{stats.xp} XP</p>
         </article>
 
         <article className="rounded-lg border border-border bg-card p-4 shadow-sm sm:col-span-2 lg:col-span-1">
@@ -50,14 +85,22 @@ const DashboardPage = () => {
             <Medal className="h-4 w-4 text-primary" />
             <span className="text-sm">Badges</span>
           </div>
-          <p className="text-2xl font-semibold">6 earned</p>
+          <p className="text-2xl font-semibold">{stats.badges} earned</p>
         </article>
       </section>
 
       <section className="space-y-4">
         <h2 className="text-2xl font-display">Continue Where You Left Off</h2>
         <div className="space-y-4">
-          {enrolledCourses.map((course) => (
+          {(enrollments.length > 0
+            ? enrollments.map((item) => ({
+                title: item.course_title,
+                description: `Adaptive module ${item.current_module_index} · Status: ${item.status}`,
+                progress: Math.max(5, Math.round(Number(item.mastery_score ?? 0))),
+                slug: item.course_slug,
+              }))
+            : enrolledCourses.map((item) => ({ ...item, slug: "courses" }))
+          ).map((course) => (
             <article
               key={course.title}
               className="rounded-lg border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/30"
@@ -77,13 +120,29 @@ const DashboardPage = () => {
                   </div>
                 </div>
 
-                <Button className="h-10 gap-2 self-start md:self-center">
+                <Button asChild className="h-10 gap-2 self-start md:self-center">
+                  <Link to={`/courses/${course.slug}`}>
                   <PlayCircle className="h-4 w-4" />
                   Resume Learning
+                  </Link>
                 </Button>
               </div>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-display">EduMentor Philosophy</h2>
+            <p className="text-sm text-muted-foreground">Voice-first, culturally relevant, and adaptive for every learner journey in Pakistan and beyond.</p>
+          </div>
+          <Button variant="outline" asChild>
+            <Link to="/my-learning">
+              <Sparkles className="h-4 w-4" /> View adaptive plan
+            </Link>
+          </Button>
         </div>
       </section>
     </section>
