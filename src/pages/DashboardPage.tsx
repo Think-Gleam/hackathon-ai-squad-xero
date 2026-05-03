@@ -97,7 +97,7 @@ const DashboardPage = () => {
                 progress: Math.max(5, Math.round(Number(item.mastery_score ?? 0))),
                 slug: item.course_slug,
               }))
-            : enrolledCourses.map((item) => ({ ...item, slug: "courses" }))
+            : enrolledCourses.map((item) => ({ ...item, slug: "ai-fundamentals" }))
           ).map((course) => (
             <article
               key={course.title}
