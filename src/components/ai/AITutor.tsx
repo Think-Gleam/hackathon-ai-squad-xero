@@ -1,5 +1,7 @@
 import { Bot, Loader2, Mic, MicOff, Play, SendHorizontal, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -184,7 +186,13 @@ const AITutor = () => {
                       : "border border-border bg-secondary/35 text-foreground"
                   }`}
                 >
-                  {message.text}
+                  {message.role === "assistant" ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-foreground">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    message.text
+                  )}
                 </div>
                 {message.role === "assistant" ? (
                   <Button
