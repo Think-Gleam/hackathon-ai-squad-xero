@@ -187,7 +187,7 @@ const AITutor = () => {
                   }`}
                 >
                   {message.role === "assistant" ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none text-foreground">
+                    <div className="prose prose-sm max-w-none text-foreground dark:prose-invert">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
                     </div>
                   ) : (
