@@ -1,8 +1,9 @@
+import type { ReactElement } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 
-export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+export const ProtectedRoute = ({ children }: { children: ReactElement }) => {
   const { session, loading } = useAuth();
   const location = useLocation();
 
@@ -17,7 +18,7 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
-export const PublicOnlyRoute = ({ children }: { children: JSX.Element }) => {
+export const PublicOnlyRoute = ({ children }: { children: ReactElement }) => {
   const { session, loading, profile } = useAuth();
 
   if (loading) {
@@ -35,7 +36,7 @@ export const PublicOnlyRoute = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
-export const OnboardingGate = ({ children }: { children: JSX.Element }) => {
+export const OnboardingGate = ({ children }: { children: ReactElement }) => {
   const { session, profile, loading } = useAuth();
 
   if (loading) {
