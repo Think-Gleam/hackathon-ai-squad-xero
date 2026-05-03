@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { logAgentStep, logVoiceUsage } from "@/lib/learning-flow";
+import { logLearningActivity } from "@/lib/gamification";
 
 type ChatMessage = {
   role: "ai" | "user";
@@ -142,6 +143,11 @@ const AiTutorPage = () => {
           agent: "tutor",
           inputPayload: { message: content, language: profile.preferred_language },
           outputPayload: { responseLength: responseText.length },
+        });
+        void logLearningActivity({
+          profileId: profile.id,
+          activityType: "lesson_interaction",
+          metadata: { channel: "ai_tutor", inputLength: content.length },
         });
       }
       setThinking(false);
