@@ -312,37 +312,11 @@ const CourseDetailPage = () => {
         </section>
       ) : null}
 
-      {activeModule && quizDraft.length > 0 ? (
-        <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-          <h2 className="text-xl font-semibold">Quiz Agent: Adaptive check</h2>
-          <div className="space-y-3">
-            {quizDraft.map((question) => (
-              <article key={question.id} className="rounded-md border border-border bg-secondary/30 p-3 space-y-2">
-                <p className="text-sm font-medium text-foreground">{question.prompt}</p>
-                <div className="grid gap-2">
-                  {question.options.map((option, index) => (
-                    <button
-                      key={`${question.id}-${option}`}
-                      type="button"
-                      onClick={() => setSelectedAnswers((prev) => ({ ...prev, [question.id]: index }))}
-                      className={`rounded-md border px-3 py-2 text-left text-sm ${selectedAnswers[question.id] === index ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-muted-foreground"}`}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-          <Button onClick={submitQuiz} disabled={evaluating}>
-            {evaluating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Submit adaptive quiz
-          </Button>
-        </section>
-      ) : null}
+      {activeModule ? <QuizEngine topic={quizTopic} preferredLanguage={profile?.preferred_language} onSubmit={submitQuiz} /> : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={() => activeModule && setActiveModuleId(activeModule.id)}>
-          <Play className="h-4 w-4" /> Start adaptive module
+        <Button onClick={() => void startAdaptiveModule()} disabled={!activeModule || moduleStartPending}>
+          {moduleStartPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Start adaptive module
         </Button>
         <Button variant="outline" asChild>
           <Link to="/courses">Back to Courses</Link>
