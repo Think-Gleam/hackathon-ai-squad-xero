@@ -18,6 +18,8 @@ import {
   submitAdaptiveQuiz,
 } from "@/lib/learning-flow";
 
+const db = supabase as any;
+
 const primaryVoiceByLanguage = {
   english: "JBFqnCBsd6RMkjVDRZzb",
   urdu: "EXAVITQu4vr4xnSDxMaL",
@@ -108,7 +110,7 @@ const CourseDetailPage = () => {
     const script = activeModule.voice_script || activeModule.lesson_summary || `Let's study ${activeModule.module_title}.`;
 
     setListening(true);
-    const { data, error } = await supabase.functions.invoke("elevenlabs-tts", {
+    const { data, error } = await db.functions.invoke("elevenlabs-tts", {
       body: { text: script, voiceId },
     });
 
