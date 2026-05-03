@@ -11,6 +11,7 @@ type AuthContextValue = {
   profile: Profile | null;
   loading: boolean;
   refreshProfile: () => Promise<void>;
+  signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<Profile, "full_name" | "city" | "preferred_language" | "current_education_level" | "learning_goals">>) => Promise<void>;
 };
 
@@ -64,6 +65,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setProfile(data);
   };
 
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw new Error(error.message);
+    }
+    setProfile(null);
+    setSession(null);
+  };
+
   useEffect(() => {
     const {
       data: { subscription },
@@ -112,6 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       profile,
       loading,
       refreshProfile,
+      signOut,
       updateProfile,
     }),
     [session, profile, loading],

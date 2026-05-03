@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Loader2, Play, Sparkles, Volume2 } from "lucide-react";
+import { Loader2, Play, Volume2 } from "lucide-react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import QuizEngine from "@/components/quiz/QuizEngine";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAvailableCourseBySlug, type EduCourse } from "@/lib/course-catalog";
 import { logLearningActivity } from "@/lib/gamification";
@@ -13,7 +14,6 @@ import {
   createPlannerEntry,
   ensureEnrollmentAndModules,
   fetchCourseLearningState,
-  generateQuizForModule,
   logAgentStep,
   logVoiceUsage,
   submitAdaptiveQuiz,
@@ -50,9 +50,8 @@ const CourseDetailPage = () => {
   const [enrollment, setEnrollment] = useState<any | null>(null);
   const [modules, setModules] = useState<LearningModule[]>([]);
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
-  const [evaluating, setEvaluating] = useState(false);
+  const [moduleStartPending, setModuleStartPending] = useState(false);
   const [listening, setListening] = useState(false);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -66,10 +65,7 @@ const CourseDetailPage = () => {
   }, [courseSlug]);
 
   const activeModule = modules.find((item) => item.id === activeModuleId) ?? modules.find((item) => item.unlock_state === "unlocked") ?? null;
-  const quizDraft = useMemo(() => {
-    if (!activeModule || !profile) return [];
-    return generateQuizForModule(activeModule.module_title, profile);
-  }, [activeModule, profile]);
+  const quizTopic = useMemo(() => activeModule?.module_title ?? "", [activeModule?.module_title]);
 
   const loadLearningState = async () => {
     if (!profile?.id || !courseSlug) return;
@@ -146,26 +142,18 @@ const CourseDetailPage = () => {
     });
   };
 
-  const submitQuiz = async () => {
-    if (!profile || !activeModule || quizDraft.length === 0) return;
-    const answered = quizDraft.filter((item) => selectedAnswers[item.id] !== undefined);
-    if (answered.length !== quizDraft.length) {
-      toast({ title: "Complete all quiz answers", description: "Please answer every question before submitting." });
-      return;
-    }
+  const submitQuiz = async (result: { scorePercent: number; questionCount: number; correctCount: number }) => {
+    if (!profile || !activeModule) return;
 
-    const correctCount = quizDraft.reduce((sum, item) => sum + (selectedAnswers[item.id] === item.correctIndex ? 1 : 0), 0);
-    const score = Math.round((correctCount / quizDraft.length) * 100);
-
-    setEvaluating(true);
+    const score = result.scorePercent;
     try {
-      const evaluator = await submitAdaptiveQuiz(profile.id, activeModule.id, score, quizDraft.length);
+      const evaluator = await submitAdaptiveQuiz(profile.id, activeModule.id, score, result.questionCount);
       await logAgentStep({
         profileId: profile.id,
         courseSlug,
         moduleId: activeModule.id,
         agent: "quiz",
-        inputPayload: { questionCount: quizDraft.length },
+        inputPayload: { questionCount: result.questionCount },
         outputPayload: { score },
       });
       await logAgentStep({
@@ -177,11 +165,10 @@ const CourseDetailPage = () => {
         outputPayload: { nextAction: evaluator?.next_action },
       });
 
-      setSelectedAnswers({});
       await logLearningActivity({
         profileId: profile.id,
         activityType: "quiz_completed",
-        metadata: { moduleId: activeModule.id, score },
+        metadata: { moduleId: activeModule.id, score, correctAnswers: result.correctCount },
       });
 
       if (score >= 75) {
@@ -207,8 +194,31 @@ const CourseDetailPage = () => {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Evaluation failed.";
       toast({ title: "Could not submit quiz", description: message, variant: "destructive" });
+      throw error;
+    }
+  };
+
+  const startAdaptiveModule = async () => {
+    if (!profile?.id || !enrollment?.id || !activeModule) return;
+    setModuleStartPending(true);
+    try {
+      await db.from("course_enrollments").update({ status: "active" }).eq("id", enrollment.id).eq("profile_id", profile.id);
+      await logLearningActivity({
+        profileId: profile.id,
+        activityType: "lesson_interaction",
+        referenceModuleId: activeModule.id,
+        metadata: { action: "start_adaptive_module", moduleTitle: activeModule.module_title },
+      });
+      toast({ title: "Adaptive module started", description: `${activeModule.module_title} is now active.` });
+      await loadLearningState();
+    } catch (error) {
+      toast({
+        title: "Could not start module",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
-      setEvaluating(false);
+      setModuleStartPending(false);
     }
   };
 
@@ -302,37 +312,11 @@ const CourseDetailPage = () => {
         </section>
       ) : null}
 
-      {activeModule && quizDraft.length > 0 ? (
-        <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-          <h2 className="text-xl font-semibold">Quiz Agent: Adaptive check</h2>
-          <div className="space-y-3">
-            {quizDraft.map((question) => (
-              <article key={question.id} className="rounded-md border border-border bg-secondary/30 p-3 space-y-2">
-                <p className="text-sm font-medium text-foreground">{question.prompt}</p>
-                <div className="grid gap-2">
-                  {question.options.map((option, index) => (
-                    <button
-                      key={`${question.id}-${option}`}
-                      type="button"
-                      onClick={() => setSelectedAnswers((prev) => ({ ...prev, [question.id]: index }))}
-                      className={`rounded-md border px-3 py-2 text-left text-sm ${selectedAnswers[question.id] === index ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-muted-foreground"}`}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-          <Button onClick={submitQuiz} disabled={evaluating}>
-            {evaluating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Submit adaptive quiz
-          </Button>
-        </section>
-      ) : null}
+      {activeModule ? <QuizEngine topic={quizTopic} preferredLanguage={profile?.preferred_language} onSubmit={submitQuiz} /> : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={() => activeModule && setActiveModuleId(activeModule.id)}>
-          <Play className="h-4 w-4" /> Start adaptive module
+        <Button onClick={() => void startAdaptiveModule()} disabled={!activeModule || moduleStartPending}>
+          {moduleStartPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Start adaptive module
         </Button>
         <Button variant="outline" asChild>
           <Link to="/courses">Back to Courses</Link>

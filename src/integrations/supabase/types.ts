@@ -481,6 +481,73 @@ export type Database = {
           },
         ]
       }
+      quiz_results: {
+        Row: {
+          correct_answers: number
+          course_slug: string
+          created_at: string
+          enrollment_id: string | null
+          id: string
+          is_passed: boolean
+          module_id: string | null
+          profile_id: string
+          score_percent: number
+          source: string
+          topic: string
+          total_questions: number
+        }
+        Insert: {
+          correct_answers: number
+          course_slug: string
+          created_at?: string
+          enrollment_id?: string | null
+          id?: string
+          is_passed?: boolean
+          module_id?: string | null
+          profile_id: string
+          score_percent: number
+          source?: string
+          topic: string
+          total_questions: number
+        }
+        Update: {
+          correct_answers?: number
+          course_slug?: string
+          created_at?: string
+          enrollment_id?: string | null
+          id?: string
+          is_passed?: boolean
+          module_id?: string | null
+          profile_id?: string
+          score_percent?: number
+          source?: string
+          topic?: string
+          total_questions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_results_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "course_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_results_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "learning_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_results_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_activity_logs: {
         Row: {
           activity_date: string

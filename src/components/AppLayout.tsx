@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { BookOpen, Bot, Gauge, GraduationCap, Menu, Moon, Search, Settings, Sun, UserCircle2 } from "lucide-react";
+import { BookOpen, Bot, Gauge, GraduationCap, LogOut, Menu, Moon, Search, Settings, Sun, UserCircle2 } from "lucide-react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useToast } from "@/components/ui/use-toast";
 
 type ThemeMode = "light" | "dark";
 
@@ -24,7 +25,9 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 const AppLayout = () => {
   const [theme, setTheme] = useState<ThemeMode>("light");
-  const { profile } = useAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
+  const { profile, signOut } = useAuth();
+  const { toast } = useToast();
   const firstName = profile?.full_name?.trim().split(" ")[0] ?? "Learner";
 
   useEffect(() => {
@@ -39,6 +42,22 @@ const AppLayout = () => {
     setTheme(nextTheme);
     localStorage.setItem("edumentor-theme", nextTheme);
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
+  };
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await signOut();
+      toast({ title: "Logged out", description: "Your session has been securely closed." });
+    } catch (error) {
+      toast({
+        title: "Logout failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   return (
@@ -66,6 +85,11 @@ const AppLayout = () => {
               </NavLink>
             ))}
           </nav>
+
+          <Button variant="outline" className="mt-6 w-full justify-start gap-2" onClick={() => void handleLogout()} disabled={loggingOut}>
+            <LogOut className="h-4 w-4" />
+            {loggingOut ? "Logging out..." : "Log Out"}
+          </Button>
         </aside>
 
         <div className="flex min-h-screen flex-col">
@@ -98,6 +122,11 @@ const AppLayout = () => {
                       </NavLink>
                     ))}
                   </nav>
+
+                  <Button variant="outline" className="mt-6 w-full justify-start gap-2" onClick={() => void handleLogout()} disabled={loggingOut}>
+                    <LogOut className="h-4 w-4" />
+                    {loggingOut ? "Logging out..." : "Log Out"}
+                  </Button>
                 </SheetContent>
               </Sheet>
 
