@@ -10,6 +10,7 @@ import {
   Sparkles,
   User,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 const navItems = [
   { label: "Dashboard", icon: BarChart3, active: true },
@@ -18,7 +19,12 @@ const navItems = [
   { label: "Settings", icon: Settings, active: false },
 ];
 
-const messages = [
+type ChatMessage = {
+  role: "ai" | "user";
+  text: string;
+};
+
+const initialMessages: ChatMessage[] = [
   {
     role: "ai",
     text: "Welcome back, Areeba. Ready to continue Algebra with real-world examples from Karachi startup budgeting?",
@@ -34,6 +40,40 @@ const messages = [
 ];
 
 const Index = () => {
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(initialMessages);
+  const [inputValue, setInputValue] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const responseTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (responseTimeoutRef.current) {
+        window.clearTimeout(responseTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleSendMessage = () => {
+    const trimmedMessage = inputValue.trim();
+    if (!trimmedMessage || isThinking) return;
+
+    setChatMessages((prev) => [...prev, { role: "user", text: trimmedMessage }]);
+    setInputValue("");
+    setIsThinking(true);
+
+    responseTimeoutRef.current = window.setTimeout(() => {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: "ai",
+          text: "That is a great question! Let me break that down for you step-by-step based on your current level...",
+        },
+      ]);
+      setIsThinking(false);
+    }, 2000);
+  };
+
   return (
     <main className="page-surface min-h-screen overflow-x-hidden">
       <div className="ambient-grid pointer-events-none fixed inset-0 opacity-45" aria-hidden="true" />
@@ -70,7 +110,7 @@ const Index = () => {
           </header>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-            {messages.map((msg, idx) => (
+            {chatMessages.map((msg, idx) => (
               <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[82%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-2`}>
                   <div className={msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai hover-scale"}>{msg.text}</div>
@@ -83,6 +123,21 @@ const Index = () => {
                 </div>
               </div>
             ))}
+
+            {isThinking ? (
+              <div className="flex justify-start">
+                <div className="max-w-[82%]">
+                  <div className="chat-bubble-ai flex items-center gap-2">
+                    <span className="text-sm text-card-foreground">AI is thinking</span>
+                    <span className="typing-dots" aria-label="AI typing indicator">
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <footer className="border-t border-border/70 p-4">
@@ -91,11 +146,32 @@ const Index = () => {
                 type="text"
                 placeholder="Ask EduMentor AI anything about today’s topic..."
                 className="h-10 w-full rounded-md border-0 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                value={inputValue}
+                onChange={(event) => setInputValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
               />
-              <button className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+              <button
+                onClick={() => setIsListening((prev) => !prev)}
+                aria-pressed={isListening}
+                aria-label={isListening ? "Stop listening" : "Start listening"}
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-md border transition-colors ${
+                  isListening
+                    ? "border-destructive/40 bg-destructive/15 text-destructive animate-pulse"
+                    : "border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground"
+                }`}
+              >
                 <Mic className="h-4 w-4" />
               </button>
-              <button className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground transition-transform duration-200 hover:scale-105">
+              <button
+                onClick={handleSendMessage}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground transition-transform duration-200 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!inputValue.trim() || isThinking}
+              >
                 <SendHorizontal className="h-4 w-4" />
               </button>
             </div>
