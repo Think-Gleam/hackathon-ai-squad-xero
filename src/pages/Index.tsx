@@ -260,7 +260,7 @@ const Index = () => {
                           ) : (
                             <Play className="h-3.5 w-3.5" />
                           )}
-                          {playingMessageIndex === idx ? "Reading..." : "Play Audio"}
+                          {playingMessageIndex === idx ? "Reading..." : "Listen to the Tutor"}
                         </button>
                       ) : null}
                     </div>

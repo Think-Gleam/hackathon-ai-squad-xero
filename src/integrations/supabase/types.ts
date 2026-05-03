@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      accomplishments: {
+        Row: {
+          accomplishment_type: Database["public"]["Enums"]["accomplishment_type"]
+          course_slug: string | null
+          created_at: string
+          description: string
+          id: string
+          issued_at: string
+          metadata: Json
+          profile_id: string
+          title: string
+        }
+        Insert: {
+          accomplishment_type?: Database["public"]["Enums"]["accomplishment_type"]
+          course_slug?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          issued_at?: string
+          metadata?: Json
+          profile_id: string
+          title: string
+        }
+        Update: {
+          accomplishment_type?: Database["public"]["Enums"]["accomplishment_type"]
+          course_slug?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          issued_at?: string
+          metadata?: Json
+          profile_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accomplishments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_execution_logs: {
         Row: {
           agent: Database["public"]["Enums"]["agent_name"]
@@ -61,6 +105,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      badges: {
+        Row: {
+          created_at: string
+          description: string
+          key: string
+          label: string
+          module_threshold: number
+          xp_threshold: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          key: string
+          label: string
+          module_threshold?: number
+          xp_threshold?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          key?: string
+          label?: string
+          module_threshold?: number
+          xp_threshold?: number
+        }
+        Relationships: []
+      }
+      course_catalog: {
+        Row: {
+          created_at: string
+          curriculum: string[]
+          duration_estimate: string
+          is_available: boolean
+          level: Database["public"]["Enums"]["course_level"]
+          short_description: string
+          slug: string
+          title: string
+          updated_at: string
+          what_you_will_learn: string[]
+        }
+        Insert: {
+          created_at?: string
+          curriculum?: string[]
+          duration_estimate: string
+          is_available?: boolean
+          level?: Database["public"]["Enums"]["course_level"]
+          short_description: string
+          slug: string
+          title: string
+          updated_at?: string
+          what_you_will_learn?: string[]
+        }
+        Update: {
+          created_at?: string
+          curriculum?: string[]
+          duration_estimate?: string
+          is_available?: boolean
+          level?: Database["public"]["Enums"]["course_level"]
+          short_description?: string
+          slug?: string
+          title?: string
+          updated_at?: string
+          what_you_will_learn?: string[]
+        }
+        Relationships: []
       }
       course_enrollments: {
         Row: {
@@ -155,6 +265,42 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "daily_learning_plans_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      earned_badges: {
+        Row: {
+          badge_key: string
+          earned_at: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          badge_key: string
+          earned_at?: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          badge_key?: string
+          earned_at?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "earned_badges_badge_key_fkey"
+            columns: ["badge_key"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "earned_badges_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -335,6 +481,54 @@ export type Database = {
           },
         ]
       }
+      user_activity_logs: {
+        Row: {
+          activity_date: string
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at: string
+          id: string
+          metadata: Json
+          profile_id: string
+          reference_module_id: string | null
+          xp_delta: number
+        }
+        Insert: {
+          activity_date?: string
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at?: string
+          id?: string
+          metadata?: Json
+          profile_id: string
+          reference_module_id?: string | null
+          xp_delta?: number
+        }
+        Update: {
+          activity_date?: string
+          activity_type?: Database["public"]["Enums"]["activity_type"]
+          created_at?: string
+          id?: string
+          metadata?: Json
+          profile_id?: string
+          reference_module_id?: string | null
+          xp_delta?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_activity_logs_reference_module_id_fkey"
+            columns: ["reference_module_id"]
+            isOneToOne: false
+            referencedRelation: "learning_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voice_sessions: {
         Row: {
           audio_duration_seconds: number | null
@@ -416,11 +610,27 @@ export type Database = {
           updated_mastery_score: number
         }[]
       }
+      compute_gamification_summary: {
+        Args: { _profile_id: string }
+        Returns: {
+          current_streak: number
+          total_badges: number
+          total_xp: number
+        }[]
+      }
+      try_award_badges: { Args: { _profile_id: string }; Returns: undefined }
     }
     Enums: {
+      accomplishment_type: "certificate" | "milestone"
+      activity_type:
+        | "login"
+        | "module_completed"
+        | "quiz_completed"
+        | "lesson_interaction"
       adaptive_pace: "supportive" | "balanced" | "accelerated"
       agent_name: "planner" | "teacher" | "quiz" | "evaluator" | "tutor"
       content_complexity: "simple" | "standard" | "advanced"
+      course_level: "beginner" | "intermediate" | "advanced"
       education_level:
         | "primary"
         | "middle"
@@ -569,9 +779,17 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      accomplishment_type: ["certificate", "milestone"],
+      activity_type: [
+        "login",
+        "module_completed",
+        "quiz_completed",
+        "lesson_interaction",
+      ],
       adaptive_pace: ["supportive", "balanced", "accelerated"],
       agent_name: ["planner", "teacher", "quiz", "evaluator", "tutor"],
       content_complexity: ["simple", "standard", "advanced"],
+      course_level: ["beginner", "intermediate", "advanced"],
       education_level: [
         "primary",
         "middle",

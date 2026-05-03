@@ -1,9 +1,21 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { COURSE_CATALOG } from "@/lib/course-catalog";
+import { fetchAvailableCourses, type EduCourse } from "@/lib/course-catalog";
 
 const CoursesPage = () => {
+  const [courses, setCourses] = useState<EduCourse[]>([]);
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      const rows = await fetchAvailableCourses();
+      setCourses(rows);
+    };
+
+    void loadCourses();
+  }, []);
+
   return (
     <section className="mx-auto w-full max-w-6xl space-y-6 animate-fade-in">
       <header className="space-y-2">
@@ -12,7 +24,7 @@ const CoursesPage = () => {
       </header>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {COURSE_CATALOG.map((course) => (
+        {courses.map((course) => (
           <article key={course.slug} className="flex h-full flex-col rounded-lg border border-border bg-card p-5 shadow-sm">
             <div className="mb-3 space-y-2">
               <h2 className="text-xl font-semibold">{course.title}</h2>
