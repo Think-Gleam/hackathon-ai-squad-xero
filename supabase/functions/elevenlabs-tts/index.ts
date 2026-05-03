@@ -13,6 +13,51 @@ function getApiKey(): string {
   return apiKey;
 }
 
+function getAzureConfig() {
+  const endpoint = Deno.env.get("AZURE_SPEECH_ENDPOINT")?.trim();
+  const key = Deno.env.get("AZURE_SPEECH_KEY")?.trim();
+  const region = Deno.env.get("AZURE_SPEECH_REGION")?.trim();
+  return { endpoint, key, region };
+}
+
+function buildSsml(text: string, language?: string) {
+  const normalizedLanguage = language === "urdu" ? "ur-PK" : language === "bilingual" ? "en-US" : "en-US";
+  const voiceName = normalizedLanguage === "ur-PK" ? "ur-PK-UzmaNeural" : "en-US-JennyNeural";
+
+  return `<speak version='1.0' xml:lang='${normalizedLanguage}'><voice xml:lang='${normalizedLanguage}' name='${voiceName}'>${text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</voice></speak>`;
+}
+
+async function synthesizeWithAzure(text: string, language?: string) {
+  const { endpoint, key, region } = getAzureConfig();
+  if (!endpoint || !key) {
+    throw new Error("Azure Speech is not configured");
+  }
+
+  const azureUrl = endpoint.endsWith("/") ? `${endpoint}cognitiveservices/v1` : `${endpoint}/cognitiveservices/v1`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/ssml+xml",
+    "Ocp-Apim-Subscription-Key": key,
+    "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+    "User-Agent": "EduMentor-Voice",
+  };
+
+  if (region) {
+    headers["Ocp-Apim-Subscription-Region"] = region;
+  }
+
+  const response = await fetch(azureUrl, {
+    method: "POST",
+    headers,
+    body: buildSsml(text, language),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.arrayBuffer();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -25,7 +70,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  let payload: { text?: string; voiceId?: string; modelId?: string };
+  let payload: { text?: string; voiceId?: string; modelId?: string; language?: "english" | "urdu" | "bilingual" };
   try {
     payload = await req.json();
   } catch {
@@ -57,43 +102,67 @@ Deno.serve(async (req) => {
   try {
     apiKey = getApiKey();
   } catch {
-    return new Response(JSON.stringify({ error: "Server missing ElevenLabs key" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
-    {
-      method: "POST",
-      headers: {
-        "xi-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text,
-        model_id: modelId,
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.35,
-          use_speaker_boost: true,
-          speed: 1,
+    try {
+      const azureAudio = await synthesizeWithAzure(text, payload.language);
+      return new Response(azureAudio, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/octet-stream",
+          "Cache-Control": "no-store",
+          "X-Voice-Provider": "azure",
         },
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const err = await response.text();
-    return new Response(JSON.stringify({ error: err || "TTS generation failed" }), {
-      status: response.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+      });
+    } catch {
+      return new Response(JSON.stringify({ error: "Voice providers unavailable" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   }
 
-  const audioBytes = await response.arrayBuffer();
+  let audioBytes: ArrayBuffer;
+  let provider = "elevenlabs";
+
+  try {
+    const response = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: modelId,
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0.35,
+            use_speaker_boost: true,
+            speed: 1,
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    audioBytes = await response.arrayBuffer();
+  } catch {
+    try {
+      audioBytes = await synthesizeWithAzure(text, payload.language);
+      provider = "azure";
+    } catch {
+      return new Response(JSON.stringify({ error: "TTS generation failed" }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
 
   return new Response(audioBytes, {
     status: 200,
@@ -101,6 +170,7 @@ Deno.serve(async (req) => {
       ...corsHeaders,
       "Content-Type": "application/octet-stream",
       "Cache-Control": "no-store",
+      "X-Voice-Provider": provider,
     },
   });
 });
