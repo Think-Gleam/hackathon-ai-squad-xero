@@ -221,7 +221,7 @@ const AITutor = () => {
                     message.text
                   )}
                 </div>
-                {message.role === "assistant" ? (
+                {message.role === "assistant" && lessonContextExists ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -239,7 +239,7 @@ const AITutor = () => {
                     ) : (
                       <Play className="h-3.5 w-3.5" />
                     )}
-                    {playingMessageIndex === index ? "Reading..." : "Listen to the Tutor"}
+                    {playingMessageIndex === index ? "Audio Agent is synthesizing..." : "Listen to the Tutor"}
                   </Button>
                 ) : null}
               </div>
@@ -249,7 +249,7 @@ const AITutor = () => {
           {thinking ? (
             <div className="flex justify-start">
               <div className="rounded-md border border-border bg-secondary/35 px-4 py-3 text-sm text-foreground">
-                <span className="mr-2">AI is typing</span>
+                <span className="mr-2">Curriculum Agent is thinking...</span>
                 <span className="typing-dots" aria-label="AI typing indicator">
                   <span />
                   <span />
@@ -298,3 +298,4 @@ const AITutor = () => {
 };
 
 export default AITutor;
+  const lessonContextExists = messages.some((message) => message.role === "assistant" && message.text.trim().length > 0);
