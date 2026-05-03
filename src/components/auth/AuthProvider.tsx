@@ -22,9 +22,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const loadProfile = async (userId: string) => {
     const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-    if (!error) {
-      setProfile(data ?? null);
+    if (!error && data) {
+      setProfile(data);
+      return;
     }
+
+    if (!data) {
+      const fallbackName = session?.user?.user_metadata?.full_name ?? "Learner";
+      const { data: created } = await supabase
+        .from("profiles")
+        .insert({ id: userId, full_name: typeof fallbackName === "string" ? fallbackName : "Learner" })
+        .select("*")
+        .single();
+
+      setProfile(created ?? null);
+      return;
+    }
+
+    setProfile(null);
   };
 
   const refreshProfile = async () => {
