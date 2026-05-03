@@ -2,6 +2,7 @@ import {
   BarChart3,
   BookOpen,
   Bot,
+  CheckCircle2,
   Flame,
   Lock,
   Medal,
@@ -68,12 +69,18 @@ const Index = () => {
   const [inputValue, setInputValue] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
   const responseTimeoutRef = useRef<number | null>(null);
+  const audioTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       if (responseTimeoutRef.current) {
         window.clearTimeout(responseTimeoutRef.current);
+      }
+
+      if (audioTimeoutRef.current) {
+        window.clearTimeout(audioTimeoutRef.current);
       }
     };
   }, []);
@@ -96,6 +103,22 @@ const Index = () => {
       ]);
       setIsThinking(false);
     }, 2000);
+  };
+
+  const handleToggleAudio = (messageIndex: number) => {
+    if (audioTimeoutRef.current) {
+      window.clearTimeout(audioTimeoutRef.current);
+    }
+
+    if (playingMessageIndex === messageIndex) {
+      setPlayingMessageIndex(null);
+      return;
+    }
+
+    setPlayingMessageIndex(messageIndex);
+    audioTimeoutRef.current = window.setTimeout(() => {
+      setPlayingMessageIndex(null);
+    }, 2400);
   };
 
   return (
@@ -223,9 +246,21 @@ const Index = () => {
                     <div className={`max-w-[82%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-2`}>
                       <div className={msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai hover-scale"}>{msg.text}</div>
                       {msg.role === "ai" ? (
-                        <button className="inline-flex items-center gap-2 rounded-md border border-border bg-card/75 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-                          <Play className="h-3.5 w-3.5" />
-                          Play Audio
+                        <button
+                          onClick={() => handleToggleAudio(idx)}
+                          className="inline-flex items-center gap-2 rounded-md border border-primary/35 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-all duration-200 hover:bg-primary/20"
+                        >
+                          {playingMessageIndex === idx ? (
+                            <span className="audio-equalizer" aria-label="Audio playing animation">
+                              <span />
+                              <span />
+                              <span />
+                              <span />
+                            </span>
+                          ) : (
+                            <Play className="h-3.5 w-3.5" />
+                          )}
+                          {playingMessageIndex === idx ? "Reading..." : "Play Audio"}
                         </button>
                       ) : null}
                     </div>
@@ -286,7 +321,7 @@ const Index = () => {
               </footer>
             </section>
 
-            <aside className="glass-pane animate-slide-in-right p-4 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
+            <aside className="glass-pane context-panel animate-slide-in-right p-4 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
               <h2 className="mb-3 text-lg text-foreground">Study Context</h2>
 
               <article className="surface-card mb-4 rounded-lg p-4">
@@ -302,17 +337,33 @@ const Index = () => {
 
               <article className="surface-card rounded-lg p-4">
                 <p className="mb-3 text-sm font-semibold text-foreground">Micro-Syllabus</p>
-                <ol className="space-y-3 text-sm">
-                  <li className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-primary">
-                    <span className="story-link">Step 1: Understand quadratic intuition</span>
+                <ol className="stepper-list">
+                  <li className="stepper-item is-complete">
+                    <span className="stepper-marker" aria-hidden="true">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </span>
+                    <div className="stepper-content">
+                      <p className="stepper-title">Assess Current Knowledge</p>
+                    </div>
                   </li>
-                  <li className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-muted-foreground">
-                    <span>Step 2: Practice adaptive problems</span>
-                    <Lock className="h-4 w-4" />
+
+                  <li className="stepper-item is-active">
+                    <span className="stepper-marker" aria-hidden="true">2</span>
+                    <div className="stepper-content">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="stepper-title">Learn Core Concepts</p>
+                        <span className="rounded-md bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">Active</span>
+                      </div>
+                    </div>
                   </li>
-                  <li className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-muted-foreground">
-                    <span>Step 3: Quiz and mastery checkpoint</span>
-                    <Lock className="h-4 w-4" />
+
+                  <li className="stepper-item is-locked">
+                    <span className="stepper-marker" aria-hidden="true">
+                      <Lock className="h-3.5 w-3.5" />
+                    </span>
+                    <div className="stepper-content">
+                      <p className="stepper-title">Practice Quiz</p>
+                    </div>
                   </li>
                 </ol>
                 <div className="mt-4 inline-flex items-center gap-2 rounded-md bg-secondary/70 px-3 py-2 text-xs font-semibold text-secondary-foreground">
