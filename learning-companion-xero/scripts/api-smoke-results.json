@@ -1,0 +1,132 @@
+[
+  {
+    "category": "LLM",
+    "provider": "Gemini",
+    "secret_name": "GEMINI_API_KEY",
+    "endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
+    "method": "GET",
+    "ok": true,
+    "status_code": 200,
+    "note": "Success"
+  },
+  {
+    "category": "LLM",
+    "provider": "Gemini",
+    "secret_name": "GEMINI_API_KEY_SECONDARY",
+    "endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
+    "method": "GET",
+    "ok": true,
+    "status_code": 200,
+    "note": "Success"
+  },
+  {
+    "category": "LLM",
+    "provider": "OpenAI",
+    "secret_name": "OPENAI_API_KEY",
+    "endpoint": "https://api.openai.com/v1/models",
+    "method": "GET",
+    "ok": true,
+    "status_code": 200,
+    "note": "Success"
+  },
+  {
+    "category": "LLM",
+    "provider": "Groq",
+    "secret_name": "GROQ_API_KEY",
+    "endpoint": "https://api.groq.com/openai/v1/models",
+    "method": "GET",
+    "ok": true,
+    "status_code": 200,
+    "note": "Success"
+  },
+  {
+    "category": "LLM",
+    "provider": "OpenRouter",
+    "secret_name": "OPENROUTER_API_KEY",
+    "endpoint": "https://openrouter.ai/api/v1/models",
+    "method": "GET",
+    "ok": true,
+    "status_code": 200,
+    "note": "Success"
+  },
+  {
+    "category": "LLM",
+    "provider": "HuggingFace",
+    "secret_name": "HUGGINGFACE_TOKEN",
+    "endpoint": "https://huggingface.co/api/whoami-v2",
+    "method": "GET",
+    "ok": true,
+    "status_code": 200,
+    "note": "Success"
+  },
+  {
+    "category": "TTS",
+    "provider": "ElevenLabs",
+    "secret_name": "ELEVENLABS_API_KEY",
+    "endpoint": "https://api.elevenlabs.io/v1/models",
+    "method": "GET",
+    "ok": true,
+    "status_code": 200,
+    "note": "Success"
+  },
+  {
+    "category": "STT",
+    "provider": "AssemblyAI",
+    "secret_name": "ASSEMBLYAI_API_KEY",
+    "endpoint": "https://api.assemblyai.com/v2/account",
+    "method": "GET",
+    "ok": true,
+    "status_code": 200,
+    "note": "Success"
+  },
+  {
+    "category": "STT",
+    "provider": "Deepgram",
+    "secret_name": "DEEPGRAM_API_KEY",
+    "endpoint": "https://api.deepgram.com/v1/projects",
+    "method": "GET",
+    "ok": true,
+    "status_code": 200,
+    "note": "Success"
+  },
+  {
+    "category": "Speech",
+    "provider": "Azure Speech",
+    "secret_name": "AZURE_SPEECH_KEY_1",
+    "endpoint": "https://centralindia.api.cognitive.microsoft.com/sts/v1.0/issueToken",
+    "method": "POST",
+    "ok": true,
+    "status_code": 200,
+    "note": "Success"
+  },
+  {
+    "category": "Speech",
+    "provider": "Azure Speech",
+    "secret_name": "AZURE_SPEECH_KEY_2",
+    "endpoint": "https://centralindia.api.cognitive.microsoft.com/sts/v1.0/issueToken",
+    "method": "POST",
+    "ok": true,
+    "status_code": 200,
+    "note": "Success"
+  },
+  {
+    "category": "Database",
+    "provider": "Supabase REST",
+    "secret_name": "SUPABASE_KEY",
+    "endpoint": "https://hobllrbliagyjyixfuca.supabase.co/rest/v1/",
+    "method": "GET",
+    "ok": false,
+    "status_code": 401,
+    "note": "Provider returned non-2xx"
+  },
+  {
+    "category": "Platform",
+    "provider": "Lovable API Gateway",
+    "secret_name": "LOVABLE_API_KEY",
+    "endpoint": "Managed internally",
+    "method": "N/A",
+    "ok": true,
+    "status_code": null,
+    "note": "Managed key exists and is rotated via platform control, not direct third-party API call."
+  }
+]
