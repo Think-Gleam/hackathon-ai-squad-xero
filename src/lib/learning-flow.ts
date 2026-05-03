@@ -4,6 +4,7 @@ import { COURSE_BY_SLUG } from "@/lib/course-catalog";
 import { buildAdaptiveModules, buildQuizDraft, getAdaptiveModes } from "@/lib/adaptive-learning";
 
 type Profile = Tables<"profiles">;
+const db = supabase as any;
 
 export const ensureEnrollmentAndModules = async (profile: Profile, courseSlug: string) => {
   const course = COURSE_BY_SLUG[courseSlug];
@@ -13,7 +14,7 @@ export const ensureEnrollmentAndModules = async (profile: Profile, courseSlug: s
 
   const modes = getAdaptiveModes(profile);
 
-  const { data: existingEnrollment, error: existingEnrollmentError } = await supabase
+  const { data: existingEnrollment, error: existingEnrollmentError } = await db
     .from("course_enrollments")
     .select("*")
     .eq("profile_id", profile.id)
@@ -27,7 +28,7 @@ export const ensureEnrollmentAndModules = async (profile: Profile, courseSlug: s
   const enrollment =
     existingEnrollment ??
     (
-      await supabase
+      await db
         .from("course_enrollments")
         .insert({
           profile_id: profile.id,
@@ -63,7 +64,7 @@ export const ensureEnrollmentAndModules = async (profile: Profile, courseSlug: s
     voice_script: module.voiceScript,
   }));
 
-  const { error: moduleUpsertError } = await supabase
+  const { error: moduleUpsertError } = await db
     .from("learning_modules")
     .upsert(modulePayload as never, { onConflict: "enrollment_id,module_index", ignoreDuplicates: false });
 
@@ -75,7 +76,7 @@ export const ensureEnrollmentAndModules = async (profile: Profile, courseSlug: s
 };
 
 export const fetchEnrollmentModules = async (enrollmentId: string) => {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("learning_modules")
     .select("*")
     .eq("enrollment_id", enrollmentId)
@@ -89,7 +90,7 @@ export const fetchEnrollmentModules = async (enrollmentId: string) => {
 };
 
 export const fetchCourseLearningState = async (profileId: string, courseSlug: string) => {
-  const { data: enrollment, error: enrollmentError } = await supabase
+  const { data: enrollment, error: enrollmentError } = await db
     .from("course_enrollments")
     .select("*")
     .eq("profile_id", profileId)
@@ -111,7 +112,7 @@ export const fetchCourseLearningState = async (profileId: string, courseSlug: st
 export const submitAdaptiveQuiz = async (profileId: string, moduleId: string, scorePercent: number, questionCount: number) => {
   const correctCount = Math.round((scorePercent / 100) * questionCount);
 
-  const { data, error } = await supabase.rpc("apply_module_evaluation", {
+  const { data, error } = await db.rpc("apply_module_evaluation", {
     _profile_id: profileId,
     _module_id: moduleId,
     _score_percent: scorePercent,
@@ -129,7 +130,7 @@ export const submitAdaptiveQuiz = async (profileId: string, moduleId: string, sc
 };
 
 export const createPlannerEntry = async (profileId: string, courseSlug: string, moduleIds: string[], focusMinutes: number) => {
-  const { error } = await supabase.from("daily_learning_plans").upsert(
+  const { error } = await db.from("daily_learning_plans").upsert(
     {
       profile_id: profileId,
       plan_date: new Date().toISOString().slice(0, 10),
@@ -157,7 +158,7 @@ export const logVoiceUsage = async (params: {
   transcriptText?: string;
   status?: string;
 }) => {
-  const { error } = await supabase.from("voice_sessions").insert([{
+  const { error } = await db.from("voice_sessions").insert([{
     profile_id: params.profileId,
     course_slug: params.courseSlug ?? null,
     module_id: params.moduleId ?? null,
@@ -166,7 +167,7 @@ export const logVoiceUsage = async (params: {
     input_text: params.inputText ?? null,
     transcript_text: params.transcriptText ?? null,
     status: params.status ?? "success",
-  }] as never);
+  }]);
 
   if (error) {
     throw new Error(error.message);
@@ -181,14 +182,14 @@ export const logAgentStep = async (params: {
   inputPayload?: Record<string, unknown>;
   outputPayload?: Record<string, unknown>;
 }) => {
-  const { error } = await supabase.from("agent_execution_logs").insert([{
+  const { error } = await db.from("agent_execution_logs").insert([{
     profile_id: params.profileId,
     course_slug: params.courseSlug ?? null,
     module_id: params.moduleId ?? null,
     agent: params.agent,
     input_payload: params.inputPayload ?? {},
     output_payload: params.outputPayload ?? {},
-  }] as never);
+  }]);
 
   if (error) {
     throw new Error(error.message);
