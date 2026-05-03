@@ -1,8 +1,12 @@
-import { Bot, Mic, Play, SendHorizontal } from "lucide-react";
+import { Bot, Loader2, Mic, MicOff, Play, SendHorizontal, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { logAgentStep, logVoiceUsage } from "@/lib/learning-flow";
 
 type ChatMessage = {
   role: "ai" | "user";
@@ -17,20 +21,103 @@ const seedMessages: ChatMessage[] = [
 ];
 
 const AiTutorPage = () => {
+  const { profile } = useAuth();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>(seedMessages);
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
   const [listening, setListening] = useState(false);
+  const [narrating, setNarrating] = useState(false);
   const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
   const thinkingTimeoutRef = useRef<number | null>(null);
   const audioTimeoutRef = useRef<number | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     return () => {
       if (thinkingTimeoutRef.current) window.clearTimeout(thinkingTimeoutRef.current);
       if (audioTimeoutRef.current) window.clearTimeout(audioTimeoutRef.current);
+      if (recognitionRef.current) recognitionRef.current.stop();
+      if (currentAudioRef.current) currentAudioRef.current.pause();
     };
   }, []);
+
+  const getVoiceId = () => {
+    if (profile?.preferred_language === "urdu") return "EXAVITQu4vr4xnSDxMaL";
+    if (profile?.preferred_language === "bilingual") return "XrExE9yKIg1WjnnlVkGX";
+    return "JBFqnCBsd6RMkjVDRZzb";
+  };
+
+  const speakMessage = async (messageText: string, messageIndex: number) => {
+    if (!profile?.id) return;
+    if (currentAudioRef.current) currentAudioRef.current.pause();
+    setNarrating(true);
+    setPlayingMessageIndex(messageIndex);
+
+    const { data, error } = await supabase.functions.invoke("elevenlabs-tts", {
+      body: {
+        text: messageText,
+        voiceId: getVoiceId(),
+        language: profile.preferred_language,
+      },
+    });
+
+    if (error || !data || !(data instanceof Blob)) {
+      setNarrating(false);
+      setPlayingMessageIndex(null);
+      toast({ title: "Narration failed", description: "Could not play this response.", variant: "destructive" });
+      await logVoiceUsage({ profileId: profile.id, provider: "elevenlabs", mode: "tts", inputText: messageText, status: "failed" });
+      return;
+    }
+
+    const audio = new Audio(URL.createObjectURL(data));
+    currentAudioRef.current = audio;
+    audio.onended = async () => {
+      setNarrating(false);
+      setPlayingMessageIndex(null);
+      await logVoiceUsage({ profileId: profile.id, provider: "elevenlabs", mode: "tts", inputText: messageText, status: "success" });
+    };
+    await audio.play();
+  };
+
+  const toggleListening = async () => {
+    const speechCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!speechCtor) {
+      toast({ title: "Voice input unavailable", description: "Your browser does not support speech recognition." });
+      return;
+    }
+
+    if (listening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setListening(false);
+      return;
+    }
+
+    const recognition = new speechCtor();
+    recognitionRef.current = recognition;
+    recognition.lang = profile?.preferred_language === "urdu" ? "ur-PK" : "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = async (event: any) => {
+      const transcript = event.results?.[0]?.[0]?.transcript ?? "";
+      setDraft((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      if (profile?.id && transcript) {
+        await logVoiceUsage({ profileId: profile.id, provider: "browser-stt", mode: "stt", transcriptText: transcript });
+      }
+    };
+
+    recognition.onerror = () => {
+      setListening(false);
+      toast({ title: "Could not capture voice", description: "Please try speaking again." });
+    };
+
+    recognition.onend = () => setListening(false);
+
+    setListening(true);
+    recognition.start();
+  };
 
   const sendMessage = () => {
     const content = draft.trim();
@@ -41,25 +128,24 @@ const AiTutorPage = () => {
     setThinking(true);
 
     thinkingTimeoutRef.current = window.setTimeout(() => {
+      const responseText = "That is a great question! Let me break that down for you step-by-step with a Pakistani real-world analogy and adaptive depth for your level.";
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          text: "That is a great question! Let me break that down for you step-by-step based on your current level...",
+          text: responseText,
         },
       ]);
+      if (profile?.id) {
+        void logAgentStep({
+          profileId: profile.id,
+          agent: "tutor",
+          inputPayload: { message: content, language: profile.preferred_language },
+          outputPayload: { responseLength: responseText.length },
+        });
+      }
       setThinking(false);
     }, 1800);
-  };
-
-  const toggleAudio = (index: number) => {
-    if (audioTimeoutRef.current) window.clearTimeout(audioTimeoutRef.current);
-    if (playingMessageIndex === index) {
-      setPlayingMessageIndex(null);
-      return;
-    }
-    setPlayingMessageIndex(index);
-    audioTimeoutRef.current = window.setTimeout(() => setPlayingMessageIndex(null), 2400);
   };
 
   return (
@@ -71,7 +157,7 @@ const AiTutorPage = () => {
           </span>
           <div>
             <h1 className="text-2xl font-display">AI Tutor</h1>
-            <p className="text-sm text-muted-foreground">Personalized guidance with text and voice support.</p>
+            <p className="text-sm text-muted-foreground">Always-available adaptive tutor with voice-first, bilingual support.</p>
           </div>
         </div>
       </header>
@@ -91,7 +177,13 @@ const AiTutorPage = () => {
                   {message.text}
                 </div>
                 {message.role === "ai" ? (
-                  <Button variant="outline" size="sm" className="h-8" onClick={() => toggleAudio(index)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => void speakMessage(message.text, index)}
+                      disabled={narrating && playingMessageIndex !== index}
+                    >
                     {playingMessageIndex === index ? (
                       <span className="audio-equalizer" aria-label="Audio playing animation">
                         <span />
@@ -102,7 +194,7 @@ const AiTutorPage = () => {
                     ) : (
                       <Play className="h-3.5 w-3.5" />
                     )}
-                    {playingMessageIndex === index ? "Reading..." : "Play Audio"}
+                      {playingMessageIndex === index ? "Reading..." : "Play Audio"}
                   </Button>
                 ) : null}
               </div>
@@ -136,19 +228,16 @@ const AiTutorPage = () => {
               }}
               placeholder="Ask your tutor anything..."
             />
-            <Button
-              type="button"
-              variant={listening ? "destructive" : "outline"}
-              size="icon"
-              onClick={() => setListening((previous) => !previous)}
-              className={listening ? "animate-pulse" : ""}
-              aria-label={listening ? "Stop listening" : "Start listening"}
-            >
-              <Mic className="h-4 w-4" />
+            <Button type="button" variant={listening ? "destructive" : "outline"} size="icon" onClick={() => void toggleListening()} className={listening ? "animate-pulse" : ""} aria-label={listening ? "Stop listening" : "Start listening"}>
+              {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             </Button>
             <Button type="button" size="icon" onClick={sendMessage} disabled={!draft.trim() || thinking} aria-label="Send message">
-              <SendHorizontal className="h-4 w-4" />
+              {thinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
             </Button>
+          </div>
+          <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1"><Volume2 className="h-3.5 w-3.5" /> Voice output: ElevenLabs</span>
+            <span className="inline-flex items-center gap-1"><Mic className="h-3.5 w-3.5" /> Voice input: Browser STT</span>
           </div>
         </footer>
       </div>

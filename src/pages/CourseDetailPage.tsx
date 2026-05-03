@@ -1,13 +1,190 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Loader2, Play, Sparkles, Volume2 } from "lucide-react";
 
+import { useAuth } from "@/components/auth/AuthProvider";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { COURSE_CATALOG } from "@/lib/course-catalog";
+import {
+  createPlannerEntry,
+  ensureEnrollmentAndModules,
+  fetchCourseLearningState,
+  generateQuizForModule,
+  logAgentStep,
+  logVoiceUsage,
+  submitAdaptiveQuiz,
+} from "@/lib/learning-flow";
+
+const db = supabase as any;
+
+const primaryVoiceByLanguage = {
+  english: "JBFqnCBsd6RMkjVDRZzb",
+  urdu: "EXAVITQu4vr4xnSDxMaL",
+  bilingual: "XrExE9yKIg1WjnnlVkGX",
+} as const;
+
+type LearningModule = {
+  id: string;
+  module_index: number;
+  module_title: string;
+  module_goal: string;
+  estimated_minutes: number;
+  difficulty_level: "beginner" | "intermediate" | "advanced";
+  unlock_state: "locked" | "unlocked" | "completed";
+  lesson_content: string | null;
+  lesson_summary: string | null;
+  voice_script: string | null;
+};
 
 const CourseDetailPage = () => {
   const { courseSlug } = useParams<{ courseSlug: string }>();
+  const { profile } = useAuth();
+  const { toast } = useToast();
 
   const course = useMemo(() => COURSE_CATALOG.find((item) => item.slug === courseSlug), [courseSlug]);
+  const [loading, setLoading] = useState(false);
+  const [enrollment, setEnrollment] = useState<any | null>(null);
+  const [modules, setModules] = useState<LearningModule[]>([]);
+  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  const [evaluating, setEvaluating] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const activeModule = modules.find((item) => item.id === activeModuleId) ?? modules.find((item) => item.unlock_state === "unlocked") ?? null;
+  const quizDraft = useMemo(() => {
+    if (!activeModule || !profile) return [];
+    return generateQuizForModule(activeModule.module_title, profile);
+  }, [activeModule, profile]);
+
+  const loadLearningState = async () => {
+    if (!profile?.id || !courseSlug) return;
+    const state = await fetchCourseLearningState(profile.id, courseSlug);
+    setEnrollment(state.enrollment);
+    setModules((state.modules as unknown as LearningModule[]) ?? []);
+    const firstActionable = (state.modules as LearningModule[]).find((item) => item.unlock_state === "unlocked");
+    if (firstActionable) setActiveModuleId(firstActionable.id);
+  };
+
+  useEffect(() => {
+    const initialize = async () => {
+      if (!profile || !courseSlug || !course) return;
+      setLoading(true);
+      try {
+        const setup = await ensureEnrollmentAndModules(profile, courseSlug);
+        setEnrollment(setup.enrollment);
+
+        await createPlannerEntry(profile.id, courseSlug, [], setup.adaptiveModes.defaultMinutes);
+        await logAgentStep({
+          profileId: profile.id,
+          courseSlug,
+          agent: "planner",
+          inputPayload: { learnerStage: profile.learner_stage, preferredLanguage: profile.preferred_language },
+          outputPayload: { paceMode: setup.adaptiveModes.paceMode, complexityMode: setup.adaptiveModes.complexityMode },
+        });
+
+        await loadLearningState();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to prepare learning flow.";
+        toast({ title: "Could not initialize adaptive path", description: message, variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void initialize();
+  }, [profile?.id, courseSlug]);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) audioRef.current.pause();
+    };
+  }, []);
+
+  const playLessonNarration = async () => {
+    if (!profile || !activeModule) return;
+    const voiceId = primaryVoiceByLanguage[(profile.preferred_language ?? "english") as keyof typeof primaryVoiceByLanguage];
+    const script = activeModule.voice_script || activeModule.lesson_summary || `Let's study ${activeModule.module_title}.`;
+
+    setListening(true);
+    const { data, error } = await db.functions.invoke("elevenlabs-tts", {
+      body: { text: script, voiceId },
+    });
+
+    if (error || !data || !(data instanceof Blob)) {
+      setListening(false);
+      toast({ title: "Voice narration failed", description: "Please try again.", variant: "destructive" });
+      await logVoiceUsage({ profileId: profile.id, courseSlug, moduleId: activeModule.id, provider: "elevenlabs", mode: "tts", status: "failed" });
+      return;
+    }
+
+    const audio = new Audio(URL.createObjectURL(data));
+    audioRef.current = audio;
+    audio.onended = () => setListening(false);
+    await audio.play();
+    await logVoiceUsage({
+      profileId: profile.id,
+      courseSlug,
+      moduleId: activeModule.id,
+      provider: "elevenlabs",
+      mode: "tts",
+      inputText: script,
+    });
+  };
+
+  const submitQuiz = async () => {
+    if (!profile || !activeModule || quizDraft.length === 0) return;
+    const answered = quizDraft.filter((item) => selectedAnswers[item.id] !== undefined);
+    if (answered.length !== quizDraft.length) {
+      toast({ title: "Complete all quiz answers", description: "Please answer every question before submitting." });
+      return;
+    }
+
+    const correctCount = quizDraft.reduce((sum, item) => sum + (selectedAnswers[item.id] === item.correctIndex ? 1 : 0), 0);
+    const score = Math.round((correctCount / quizDraft.length) * 100);
+
+    setEvaluating(true);
+    try {
+      const evaluator = await submitAdaptiveQuiz(profile.id, activeModule.id, score, quizDraft.length);
+      await logAgentStep({
+        profileId: profile.id,
+        courseSlug,
+        moduleId: activeModule.id,
+        agent: "quiz",
+        inputPayload: { questionCount: quizDraft.length },
+        outputPayload: { score },
+      });
+      await logAgentStep({
+        profileId: profile.id,
+        courseSlug,
+        moduleId: activeModule.id,
+        agent: "evaluator",
+        inputPayload: { score },
+        outputPayload: { nextAction: evaluator?.next_action },
+      });
+
+      setSelectedAnswers({});
+      await loadLearningState();
+
+      toast({
+        title: `Score ${score}%`,
+        description:
+          evaluator?.next_action === "proceed_to_next_module"
+            ? "Great work — next module unlocked."
+            : evaluator?.next_action === "course_completed"
+              ? "Excellent — you completed this course path."
+              : "We adapted your path for stronger understanding.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Evaluation failed.";
+      toast({ title: "Could not submit quiz", description: message, variant: "destructive" });
+    } finally {
+      setEvaluating(false);
+    }
+  };
 
   if (!course) {
     return (
@@ -28,9 +205,16 @@ const CourseDetailPage = () => {
         <h1 className="mt-1 text-3xl font-display">{course.title}</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{course.shortDescription}</p>
         <p className="mt-3 text-sm text-muted-foreground">Duration: {course.durationEstimate}</p>
+        {enrollment ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Badge variant="secondary">Pace: {enrollment.pace_mode}</Badge>
+            <Badge variant="secondary">Complexity: {enrollment.complexity_mode}</Badge>
+            <Badge variant="secondary">Mastery: {enrollment.mastery_score}%</Badge>
+          </div>
+        ) : null}
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         <article className="rounded-lg border border-border bg-card p-5 shadow-sm">
           <h2 className="text-xl font-semibold">What you'll learn</h2>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
@@ -52,10 +236,78 @@ const CourseDetailPage = () => {
             ))}
           </ol>
         </article>
+
+        <article className="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h2 className="text-xl font-semibold">Adaptive modules</h2>
+          {loading ? (
+            <p className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Building your personalized path...
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+              {modules.map((module) => (
+                <li key={module.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModuleId(module.id)}
+                    disabled={module.unlock_state === "locked"}
+                    className="w-full rounded-md border border-border bg-secondary/40 px-3 py-2 text-left disabled:opacity-50"
+                  >
+                    <p className="font-medium text-foreground">Module {module.module_index}: {module.module_title}</p>
+                    <p className="text-xs">{module.unlock_state} · {module.estimated_minutes} min · {module.difficulty_level}</p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
       </div>
 
+      {activeModule ? (
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-xl font-semibold">Teacher Agent: {activeModule.module_title}</h2>
+            <Button variant="outline" size="sm" onClick={playLessonNarration} disabled={listening}>
+              {listening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />} Listen to lesson
+            </Button>
+          </div>
+          <p className="text-sm leading-7 text-muted-foreground whitespace-pre-line">{activeModule.lesson_content ?? activeModule.lesson_summary}</p>
+          <p className="text-sm text-foreground"><span className="font-semibold">Mastery rule:</span> Score 75%+ to unlock the next module.</p>
+        </section>
+      ) : null}
+
+      {activeModule && quizDraft.length > 0 ? (
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+          <h2 className="text-xl font-semibold">Quiz Agent: Adaptive check</h2>
+          <div className="space-y-3">
+            {quizDraft.map((question) => (
+              <article key={question.id} className="rounded-md border border-border bg-secondary/30 p-3 space-y-2">
+                <p className="text-sm font-medium text-foreground">{question.prompt}</p>
+                <div className="grid gap-2">
+                  {question.options.map((option, index) => (
+                    <button
+                      key={`${question.id}-${option}`}
+                      type="button"
+                      onClick={() => setSelectedAnswers((prev) => ({ ...prev, [question.id]: index }))}
+                      className={`rounded-md border px-3 py-2 text-left text-sm ${selectedAnswers[question.id] === index ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-muted-foreground"}`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+          <Button onClick={submitQuiz} disabled={evaluating}>
+            {evaluating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Submit adaptive quiz
+          </Button>
+        </section>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-3">
-        <Button>Start Course</Button>
+        <Button onClick={() => activeModule && setActiveModuleId(activeModule.id)}>
+          <Play className="h-4 w-4" /> Start adaptive module
+        </Button>
         <Button variant="outline" asChild>
           <Link to="/courses">Back to Courses</Link>
         </Button>
