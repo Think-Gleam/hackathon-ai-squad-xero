@@ -30,6 +30,8 @@ All colors MUST be HSL.
 
     --accent: 13 88% 60%;
     --accent-foreground: 35 100% 98%;
+    --success: 145 63% 42%;
+    --success-foreground: 0 0% 100%;
 
     --destructive: 0 70% 52%;
     --destructive-foreground: 0 0% 100%;
@@ -78,6 +80,8 @@ All colors MUST be HSL.
 
     --accent: 13 88% 64%;
     --accent-foreground: 19 100% 10%;
+    --success: 145 58% 48%;
+    --success-foreground: 0 0% 100%;
 
     --destructive: 0 70% 52%;
     --destructive-foreground: 0 0% 100%;
@@ -256,7 +260,9 @@ All colors MUST be HSL.
   }
 
   .stepper-item.is-complete .stepper-marker {
-    @apply border-transparent bg-green-500 text-white;
+    border-color: transparent;
+    background-color: hsl(var(--success));
+    color: hsl(var(--success-foreground));
   }
 
   .stepper-item.is-complete:not(:last-child)::after {
