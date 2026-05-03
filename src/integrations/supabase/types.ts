@@ -14,6 +14,219 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_execution_logs: {
+        Row: {
+          agent: Database["public"]["Enums"]["agent_name"]
+          course_slug: string | null
+          created_at: string
+          id: string
+          input_payload: Json
+          module_id: string | null
+          output_payload: Json
+          profile_id: string
+        }
+        Insert: {
+          agent: Database["public"]["Enums"]["agent_name"]
+          course_slug?: string | null
+          created_at?: string
+          id?: string
+          input_payload?: Json
+          module_id?: string | null
+          output_payload?: Json
+          profile_id: string
+        }
+        Update: {
+          agent?: Database["public"]["Enums"]["agent_name"]
+          course_slug?: string | null
+          created_at?: string
+          id?: string
+          input_payload?: Json
+          module_id?: string | null
+          output_payload?: Json
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_execution_logs_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "learning_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_execution_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_enrollments: {
+        Row: {
+          complexity_mode: Database["public"]["Enums"]["content_complexity"]
+          course_slug: string
+          course_title: string
+          created_at: string
+          current_module_index: number
+          id: string
+          mastery_score: number
+          pace_mode: Database["public"]["Enums"]["adaptive_pace"]
+          preferred_language: Database["public"]["Enums"]["preferred_language"]
+          profile_id: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          updated_at: string
+        }
+        Insert: {
+          complexity_mode?: Database["public"]["Enums"]["content_complexity"]
+          course_slug: string
+          course_title: string
+          created_at?: string
+          current_module_index?: number
+          id?: string
+          mastery_score?: number
+          pace_mode?: Database["public"]["Enums"]["adaptive_pace"]
+          preferred_language?: Database["public"]["Enums"]["preferred_language"]
+          profile_id: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          updated_at?: string
+        }
+        Update: {
+          complexity_mode?: Database["public"]["Enums"]["content_complexity"]
+          course_slug?: string
+          course_title?: string
+          created_at?: string
+          current_module_index?: number
+          id?: string
+          mastery_score?: number
+          pace_mode?: Database["public"]["Enums"]["adaptive_pace"]
+          preferred_language?: Database["public"]["Enums"]["preferred_language"]
+          profile_id?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_enrollments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_learning_plans: {
+        Row: {
+          course_slug: string
+          created_at: string
+          focus_minutes: number
+          id: string
+          module_ids: string[]
+          plan_date: string
+          planner_notes: string | null
+          profile_id: string
+          status: Database["public"]["Enums"]["plan_status"]
+          updated_at: string
+        }
+        Insert: {
+          course_slug: string
+          created_at?: string
+          focus_minutes?: number
+          id?: string
+          module_ids?: string[]
+          plan_date?: string
+          planner_notes?: string | null
+          profile_id: string
+          status?: Database["public"]["Enums"]["plan_status"]
+          updated_at?: string
+        }
+        Update: {
+          course_slug?: string
+          created_at?: string
+          focus_minutes?: number
+          id?: string
+          module_ids?: string[]
+          plan_date?: string
+          planner_notes?: string | null
+          profile_id?: string
+          status?: Database["public"]["Enums"]["plan_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_learning_plans_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_modules: {
+        Row: {
+          attempts_count: number
+          created_at: string
+          difficulty_level: Database["public"]["Enums"]["module_difficulty"]
+          enrollment_id: string
+          estimated_minutes: number
+          id: string
+          lesson_content: string | null
+          lesson_summary: string | null
+          max_attempts: number
+          module_goal: string
+          module_index: number
+          module_title: string
+          pakistan_context_examples: string[]
+          unlock_state: Database["public"]["Enums"]["module_unlock_state"]
+          updated_at: string
+          voice_script: string | null
+        }
+        Insert: {
+          attempts_count?: number
+          created_at?: string
+          difficulty_level?: Database["public"]["Enums"]["module_difficulty"]
+          enrollment_id: string
+          estimated_minutes?: number
+          id?: string
+          lesson_content?: string | null
+          lesson_summary?: string | null
+          max_attempts?: number
+          module_goal: string
+          module_index: number
+          module_title: string
+          pakistan_context_examples?: string[]
+          unlock_state?: Database["public"]["Enums"]["module_unlock_state"]
+          updated_at?: string
+          voice_script?: string | null
+        }
+        Update: {
+          attempts_count?: number
+          created_at?: string
+          difficulty_level?: Database["public"]["Enums"]["module_difficulty"]
+          enrollment_id?: string
+          estimated_minutes?: number
+          id?: string
+          lesson_content?: string | null
+          lesson_summary?: string | null
+          max_attempts?: number
+          module_goal?: string
+          module_index?: number
+          module_title?: string
+          pakistan_context_examples?: string[]
+          unlock_state?: Database["public"]["Enums"]["module_unlock_state"]
+          updated_at?: string
+          voice_script?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_modules_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "course_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           city: string | null
@@ -65,14 +278,149 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_attempts: {
+        Row: {
+          attempt_no: number
+          correct_count: number
+          created_at: string
+          difficulty_applied: Database["public"]["Enums"]["module_difficulty"]
+          feedback: string | null
+          id: string
+          module_id: string
+          profile_id: string
+          question_count: number
+          recommended_next_action: string | null
+          score_percent: number
+        }
+        Insert: {
+          attempt_no: number
+          correct_count?: number
+          created_at?: string
+          difficulty_applied?: Database["public"]["Enums"]["module_difficulty"]
+          feedback?: string | null
+          id?: string
+          module_id: string
+          profile_id: string
+          question_count?: number
+          recommended_next_action?: string | null
+          score_percent?: number
+        }
+        Update: {
+          attempt_no?: number
+          correct_count?: number
+          created_at?: string
+          difficulty_applied?: Database["public"]["Enums"]["module_difficulty"]
+          feedback?: string | null
+          id?: string
+          module_id?: string
+          profile_id?: string
+          question_count?: number
+          recommended_next_action?: string | null
+          score_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "learning_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_sessions: {
+        Row: {
+          audio_duration_seconds: number | null
+          course_slug: string | null
+          created_at: string
+          id: string
+          input_text: string | null
+          metadata: Json
+          mode: Database["public"]["Enums"]["voice_mode"]
+          module_id: string | null
+          profile_id: string
+          provider: string
+          status: string
+          transcript_text: string | null
+        }
+        Insert: {
+          audio_duration_seconds?: number | null
+          course_slug?: string | null
+          created_at?: string
+          id?: string
+          input_text?: string | null
+          metadata?: Json
+          mode: Database["public"]["Enums"]["voice_mode"]
+          module_id?: string | null
+          profile_id: string
+          provider: string
+          status?: string
+          transcript_text?: string | null
+        }
+        Update: {
+          audio_duration_seconds?: number | null
+          course_slug?: string | null
+          created_at?: string
+          id?: string
+          input_text?: string | null
+          metadata?: Json
+          mode?: Database["public"]["Enums"]["voice_mode"]
+          module_id?: string | null
+          profile_id?: string
+          provider?: string
+          status?: string
+          transcript_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_sessions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "learning_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_sessions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      apply_module_evaluation: {
+        Args: {
+          _correct_count: number
+          _feedback?: string
+          _module_id: string
+          _profile_id: string
+          _question_count: number
+          _score_percent: number
+        }
+        Returns: {
+          enrollment_completed: boolean
+          next_action: string
+          unlocked_module_id: string
+          updated_mastery_score: number
+        }[]
+      }
     }
     Enums: {
+      adaptive_pace: "supportive" | "balanced" | "accelerated"
+      agent_name: "planner" | "teacher" | "quiz" | "evaluator" | "tutor"
+      content_complexity: "simple" | "standard" | "advanced"
       education_level:
         | "primary"
         | "middle"
@@ -81,6 +429,10 @@ export type Database = {
         | "undergraduate"
         | "postgraduate"
         | "other"
+      enrollment_status: "active" | "completed" | "paused"
+      module_difficulty: "beginner" | "intermediate" | "advanced"
+      module_unlock_state: "locked" | "unlocked" | "completed"
+      plan_status: "pending" | "completed" | "skipped"
       preferred_language: "english" | "urdu" | "bilingual"
       user_stage:
         | "kid_primary"
@@ -89,6 +441,7 @@ export type Database = {
         | "university_student"
         | "working_professional"
         | "parent"
+      voice_mode: "tts" | "stt" | "duplex"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -216,6 +569,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      adaptive_pace: ["supportive", "balanced", "accelerated"],
+      agent_name: ["planner", "teacher", "quiz", "evaluator", "tutor"],
+      content_complexity: ["simple", "standard", "advanced"],
       education_level: [
         "primary",
         "middle",
@@ -225,6 +581,10 @@ export const Constants = {
         "postgraduate",
         "other",
       ],
+      enrollment_status: ["active", "completed", "paused"],
+      module_difficulty: ["beginner", "intermediate", "advanced"],
+      module_unlock_state: ["locked", "unlocked", "completed"],
+      plan_status: ["pending", "completed", "skipped"],
       preferred_language: ["english", "urdu", "bilingual"],
       user_stage: [
         "kid_primary",
@@ -234,6 +594,7 @@ export const Constants = {
         "working_professional",
         "parent",
       ],
+      voice_mode: ["tts", "stt", "duplex"],
     },
   },
 } as const
