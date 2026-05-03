@@ -14,7 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          city: string | null
+          created_at: string
+          current_education_level:
+            | Database["public"]["Enums"]["education_level"]
+            | null
+          date_of_birth: string | null
+          full_name: string
+          id: string
+          learner_stage: Database["public"]["Enums"]["user_stage"]
+          learning_goals: string[]
+          onboarding_completed: boolean
+          onboarding_interests: string[]
+          preferred_language: Database["public"]["Enums"]["preferred_language"]
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          current_education_level?:
+            | Database["public"]["Enums"]["education_level"]
+            | null
+          date_of_birth?: string | null
+          full_name?: string
+          id: string
+          learner_stage?: Database["public"]["Enums"]["user_stage"]
+          learning_goals?: string[]
+          onboarding_completed?: boolean
+          onboarding_interests?: string[]
+          preferred_language?: Database["public"]["Enums"]["preferred_language"]
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          current_education_level?:
+            | Database["public"]["Enums"]["education_level"]
+            | null
+          date_of_birth?: string | null
+          full_name?: string
+          id?: string
+          learner_stage?: Database["public"]["Enums"]["user_stage"]
+          learning_goals?: string[]
+          onboarding_completed?: boolean
+          onboarding_interests?: string[]
+          preferred_language?: Database["public"]["Enums"]["preferred_language"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +73,22 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      education_level:
+        | "primary"
+        | "middle"
+        | "secondary"
+        | "higher_secondary"
+        | "undergraduate"
+        | "postgraduate"
+        | "other"
+      preferred_language: "english" | "urdu" | "bilingual"
+      user_stage:
+        | "kid_primary"
+        | "middle_school"
+        | "high_school"
+        | "university_student"
+        | "working_professional"
+        | "parent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +215,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      education_level: [
+        "primary",
+        "middle",
+        "secondary",
+        "higher_secondary",
+        "undergraduate",
+        "postgraduate",
+        "other",
+      ],
+      preferred_language: ["english", "urdu", "bilingual"],
+      user_stage: [
+        "kid_primary",
+        "middle_school",
+        "high_school",
+        "university_student",
+        "working_professional",
+        "parent",
+      ],
+    },
   },
 } as const
