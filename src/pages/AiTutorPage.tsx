@@ -59,6 +59,7 @@ const AiTutorPage = () => {
       body: {
         text: messageText,
         voiceId: getVoiceId(),
+        language: profile.preferred_language,
       },
     });
 
