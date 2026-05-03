@@ -25,6 +25,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 const AppLayout = () => {
   const [theme, setTheme] = useState<ThemeMode>("light");
   const { profile } = useAuth();
+  const firstName = profile?.full_name?.trim().split(" ")[0] ?? "Learner";
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("edumentor-theme") as ThemeMode | null;
@@ -44,6 +45,11 @@ const AppLayout = () => {
     <div className="min-h-screen bg-background text-foreground">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="hidden border-r border-border/70 bg-card/65 p-5 backdrop-blur lg:block">
+          <div className="mb-6 rounded-md border border-border/70 bg-background/70 p-3">
+            <p className="text-xs text-muted-foreground">Profile</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">Good morning, {firstName}! 👋</p>
+          </div>
+
           <Link to="/" className="mb-8 flex items-center gap-3">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-primary/15 text-primary">E</span>
             <div>
