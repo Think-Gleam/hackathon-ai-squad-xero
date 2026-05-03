@@ -35,11 +35,16 @@ const AITutor = () => {
   const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
   const recognitionRef = useRef<any>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const currentAudioUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
       if (recognitionRef.current) recognitionRef.current.stop();
       if (currentAudioRef.current) currentAudioRef.current.pause();
+      if (currentAudioUrlRef.current) {
+        URL.revokeObjectURL(currentAudioUrlRef.current);
+        currentAudioUrlRef.current = null;
+      }
     };
   }, []);
 
@@ -52,6 +57,10 @@ const AITutor = () => {
   const speakMessage = async (messageText: string, messageIndex: number) => {
     if (!profile?.id) return;
     if (currentAudioRef.current) currentAudioRef.current.pause();
+    if (currentAudioUrlRef.current) {
+      URL.revokeObjectURL(currentAudioUrlRef.current);
+      currentAudioUrlRef.current = null;
+    }
 
     setNarrating(true);
     setPlayingMessageIndex(messageIndex);
@@ -72,14 +81,32 @@ const AITutor = () => {
       return;
     }
 
-    const audio = new Audio(URL.createObjectURL(data));
+    const audioUrl = URL.createObjectURL(data);
+    currentAudioUrlRef.current = audioUrl;
+    const audio = new Audio(audioUrl);
     currentAudioRef.current = audio;
     audio.onended = async () => {
       setNarrating(false);
       setPlayingMessageIndex(null);
+      if (currentAudioUrlRef.current) {
+        URL.revokeObjectURL(currentAudioUrlRef.current);
+        currentAudioUrlRef.current = null;
+      }
       await logVoiceUsage({ profileId: profile.id, provider: "elevenlabs", mode: "tts", inputText: messageText, status: "success" });
     };
-    await audio.play();
+
+    try {
+      await audio.play();
+    } catch {
+      setNarrating(false);
+      setPlayingMessageIndex(null);
+      if (currentAudioUrlRef.current) {
+        URL.revokeObjectURL(currentAudioUrlRef.current);
+        currentAudioUrlRef.current = null;
+      }
+      toast({ title: "Narration blocked", description: "Your browser blocked autoplay. Tap play again.", variant: "destructive" });
+      await logVoiceUsage({ profileId: profile.id, provider: "elevenlabs", mode: "tts", inputText: messageText, status: "failed" });
+    }
   };
 
   const toggleListening = async () => {
