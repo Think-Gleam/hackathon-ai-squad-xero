@@ -194,7 +194,7 @@ const AiTutorPage = () => {
                     ) : (
                       <Play className="h-3.5 w-3.5" />
                     )}
-                      {playingMessageIndex === index ? "Reading..." : "Play Audio"}
+                      {playingMessageIndex === index ? "Reading..." : "Listen to the Tutor"}
                   </Button>
                 ) : null}
               </div>
