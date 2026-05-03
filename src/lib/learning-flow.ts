@@ -112,6 +112,16 @@ export const fetchCourseLearningState = async (profileId: string, courseSlug: st
 export const submitAdaptiveQuiz = async (profileId: string, moduleId: string, scorePercent: number, questionCount: number) => {
   const correctCount = Math.round((scorePercent / 100) * questionCount);
 
+  const { data: moduleRow, error: moduleError } = await db
+    .from("learning_modules")
+    .select("module_title,enrollment_id,enrollment:course_enrollments!inner(course_slug)")
+    .eq("id", moduleId)
+    .maybeSingle();
+
+  if (moduleError) {
+    throw new Error(moduleError.message);
+  }
+
   const { data, error } = await db.rpc("apply_module_evaluation", {
     _profile_id: profileId,
     _module_id: moduleId,
@@ -123,6 +133,26 @@ export const submitAdaptiveQuiz = async (profileId: string, moduleId: string, sc
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  const courseSlug = moduleRow?.enrollment?.course_slug ?? "unknown-course";
+  const topic = moduleRow?.module_title ?? "Adaptive Quiz";
+
+  const { error: quizResultError } = await db.from("quiz_results").insert({
+    profile_id: profileId,
+    enrollment_id: moduleRow?.enrollment_id ?? null,
+    module_id: moduleId,
+    course_slug: courseSlug,
+    topic,
+    score_percent: scorePercent,
+    total_questions: questionCount,
+    correct_answers: correctCount,
+    is_passed: scorePercent >= 75,
+    source: "adaptive_quiz_engine",
+  });
+
+  if (quizResultError) {
+    throw new Error(quizResultError.message);
   }
 
   const evaluator = Array.isArray(data) ? data[0] : data;
