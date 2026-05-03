@@ -114,7 +114,7 @@ export const submitAdaptiveQuiz = async (profileId: string, moduleId: string, sc
 
   const { data: moduleRow, error: moduleError } = await db
     .from("learning_modules")
-    .select("module_title,enrollment_id,enrollment:course_enrollments!inner(course_slug)")
+    .select("module_title,enrollment_id")
     .eq("id", moduleId)
     .maybeSingle();
 
@@ -135,7 +135,17 @@ export const submitAdaptiveQuiz = async (profileId: string, moduleId: string, sc
     throw new Error(error.message);
   }
 
-  const courseSlug = moduleRow?.enrollment?.course_slug ?? "unknown-course";
+  let courseSlug = "unknown-course";
+  if (moduleRow?.enrollment_id) {
+    const { data: enrollmentRow } = await db
+      .from("course_enrollments")
+      .select("course_slug")
+      .eq("id", moduleRow.enrollment_id)
+      .maybeSingle();
+    if (enrollmentRow?.course_slug) {
+      courseSlug = enrollmentRow.course_slug;
+    }
+  }
   const topic = moduleRow?.module_title ?? "Adaptive Quiz";
 
   const { error: quizResultError } = await db.from("quiz_results").insert({
