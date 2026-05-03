@@ -142,6 +142,59 @@ All colors MUST be HSL.
     box-shadow: 0 12px 24px -20px hsl(var(--foreground) / 0.35);
   }
 
+  .dashboard-shell {
+    display: grid;
+    grid-template-columns: 270px minmax(0, 1fr) 300px;
+    gap: 1rem;
+    min-height: 100vh;
+    padding: 1rem;
+  }
+
+  .glass-pane {
+    background-color: hsl(var(--surface-elevated));
+    backdrop-filter: blur(14px);
+    border: 1px solid hsl(var(--border) / 0.9);
+    box-shadow: 0 10px 34px -24px hsl(var(--foreground) / 0.38);
+    border-radius: 0.75rem;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-secondary/70 hover:text-foreground;
+  }
+
+  .nav-item-active {
+    @apply bg-primary/15 text-primary;
+  }
+
+  .chat-bubble-ai {
+    @apply rounded-md rounded-bl-sm bg-card px-4 py-3 text-sm text-card-foreground shadow-sm;
+  }
+
+  .chat-bubble-user {
+    @apply rounded-md rounded-br-sm bg-primary px-4 py-3 text-sm text-primary-foreground shadow-sm;
+  }
+
+  .hover-scale {
+    @apply transition-transform duration-200 hover:scale-[1.02];
+  }
+
+  .story-link {
+    @apply relative inline-block after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:origin-bottom-right after:scale-x-0 after:bg-primary after:transition-transform after:duration-300 hover:after:origin-bottom-left hover:after:scale-x-100;
+  }
+
+  @media (max-width: 1200px) {
+    .dashboard-shell {
+      grid-template-columns: 230px minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 920px) {
+    .dashboard-shell {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 0.75rem;
+    }
+  }
+
   .title-gradient {
     background-image: linear-gradient(120deg, hsl(var(--foreground)) 5%, hsl(var(--primary)) 50%, hsl(var(--accent)) 90%);
     background-size: 200% auto;
