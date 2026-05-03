@@ -55,6 +55,16 @@ const CourseDetailPage = () => {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  useEffect(() => {
+    const loadCourse = async () => {
+      if (!courseSlug) return;
+      const availableCourse = await fetchAvailableCourseBySlug(courseSlug);
+      setCourse(availableCourse);
+    };
+
+    void loadCourse();
+  }, [courseSlug]);
+
   const activeModule = modules.find((item) => item.id === activeModuleId) ?? modules.find((item) => item.unlock_state === "unlocked") ?? null;
   const quizDraft = useMemo(() => {
     if (!activeModule || !profile) return [];
@@ -168,6 +178,21 @@ const CourseDetailPage = () => {
       });
 
       setSelectedAnswers({});
+      await logLearningActivity({
+        profileId: profile.id,
+        activityType: "quiz_completed",
+        metadata: { moduleId: activeModule.id, score },
+      });
+
+      if (score >= 75) {
+        await logLearningActivity({
+          profileId: profile.id,
+          activityType: "module_completed",
+          referenceModuleId: activeModule.id,
+          metadata: { moduleTitle: activeModule.module_title },
+        });
+      }
+
       await loadLearningState();
 
       toast({
@@ -269,7 +294,7 @@ const CourseDetailPage = () => {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-xl font-semibold">Teacher Agent: {activeModule.module_title}</h2>
             <Button variant="outline" size="sm" onClick={playLessonNarration} disabled={listening}>
-              {listening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />} Listen to lesson
+              {listening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />} Listen to the Tutor
             </Button>
           </div>
           <p className="text-sm leading-7 text-muted-foreground whitespace-pre-line">{activeModule.lesson_content ?? activeModule.lesson_summary}</p>
