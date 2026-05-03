@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { BookOpen, Bot, Gauge, GraduationCap, Menu, Moon, Search, Settings, Sun, UserCircle2 } from "lucide-react";
 
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -23,6 +24,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 const AppLayout = () => {
   const [theme, setTheme] = useState<ThemeMode>("light");
+  const { profile } = useAuth();
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("edumentor-theme") as ThemeMode | null;
@@ -99,7 +101,7 @@ const AppLayout = () => {
 
               <div className="hidden items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 sm:flex">
                 <UserCircle2 className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">Emma Watson</span>
+                <span className="text-sm font-medium">{profile?.full_name ?? "Learner"}</span>
               </div>
             </div>
           </header>
